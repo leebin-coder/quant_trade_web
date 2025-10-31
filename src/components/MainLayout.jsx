@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, theme } from 'antd'
+import { Layout, Menu, theme, Dropdown, Avatar, Modal } from 'antd'
 import {
   DashboardOutlined,
   LineChartOutlined,
   AppstoreOutlined,
   HistoryOutlined,
+  UserOutlined,
+  LogoutOutlined,
 } from '@ant-design/icons'
 
 const { Header, Content, Sider } = Layout
@@ -41,9 +43,49 @@ function MainLayout() {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken()
 
+  // 获取用户信息，昵称默认为"韭菜+手机号后四位"
+  const getDisplayName = () => {
+    const nickName = localStorage.getItem('nickName')
+    if (nickName && nickName !== '用户') {
+      return nickName
+    }
+    const phone = localStorage.getItem('phone')
+    if (phone && phone.length >= 4) {
+      return `韭菜${phone.slice(-4)}`
+    }
+    return '韭菜'
+  }
+
+  const displayName = getDisplayName()
+
   const handleMenuClick = ({ key }) => {
     navigate(key)
   }
+
+  const handleLogout = () => {
+    Modal.confirm({
+      title: '退出登录',
+      content: '确定要退出登录吗？',
+      okText: '确定',
+      cancelText: '取消',
+      onOk: () => {
+        localStorage.removeItem('token')
+        localStorage.removeItem('userId')
+        localStorage.removeItem('nickName')
+        localStorage.removeItem('phone')
+        navigate('/login')
+      },
+    })
+  }
+
+  const userMenuItems = [
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: '退出登录',
+      onClick: handleLogout,
+    },
+  ]
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -60,7 +102,7 @@ function MainLayout() {
             fontWeight: 'bold',
           }}
         >
-          {collapsed ? 'QT' : '量化交易系统'}
+          {collapsed ? 'CC' : 'Chinese Chives'}
         </div>
         <Menu
           theme="dark"
@@ -83,8 +125,37 @@ function MainLayout() {
           <div style={{ fontSize: 18, fontWeight: 500 }}>
             {menuItems.find(item => item.key === location.pathname)?.label}
           </div>
-          <div style={{ color: '#666' }}>
-            {new Date().toLocaleString('zh-CN')}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ color: '#999', fontSize: '14px' }}>
+              {new Date().toLocaleString('zh-CN')}
+            </div>
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  padding: '4px 12px',
+                  borderRadius: '6px',
+                  transition: 'background 0.3s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f5f5f5'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                }}
+              >
+                <Avatar
+                  size="small"
+                  style={{ background: '#52c41a', fontSize: '16px' }}
+                >
+                  🌱
+                </Avatar>
+                <span style={{ fontSize: '14px' }}>{displayName}</span>
+              </div>
+            </Dropdown>
           </div>
         </Header>
         <Content style={{ margin: '16px' }}>

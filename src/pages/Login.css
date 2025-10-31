@@ -1,0 +1,339 @@
+.login-container {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #4a7bc9 0%, #8b5fa8 20%, #c94a7b 65%, #e89e4a 90%);
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
+  padding: 20px;
+}
+
+.login-box {
+  width: 100%;
+  max-width: 380px;
+  height: 260px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 24px 28px;
+  animation: slideUp 0.5s ease-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-title {
+  text-align: center;
+  font-size: 32px;
+  font-weight: 600;
+  height: 45px;
+  line-height: 45px;
+  margin-bottom: 0;
+  background: linear-gradient(135deg, #2d5a9f 0%, #6b3d7f 20%, #a02d5a 65%, #c67a2d 90%);
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 2px;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.login-form {
+  flex: 1;
+  margin: 0;
+  margin-top: 50px;
+  width: 100%;
+}
+
+.login-form .ant-input-affix-wrapper {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: 1px solid #d2d2d7;
+  transition: all 0.2s;
+  background: #fbfbfd;
+}
+
+.login-form .ant-input-affix-wrapper:hover {
+  border-color: #86868b;
+  background: white;
+}
+
+.login-form .ant-input-affix-wrapper-focused {
+  border-color: #0071e3;
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+  background: white;
+}
+
+.login-form .ant-input {
+  font-size: 15px;
+  color: #1d1d1f;
+}
+
+.login-form .ant-input::placeholder {
+  color: #86868b;
+}
+
+.login-form .code-item .ant-input::placeholder {
+  color: #b8b8b8;
+  font-size: 13px;
+}
+
+.login-form .ant-input-prefix {
+  margin-right: 10px;
+  color: #86868b;
+  font-size: 16px;
+}
+
+.login-form .ant-btn-primary {
+  height: 40px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  background: #0071e3;
+  border: none;
+  box-shadow: none;
+  transition: all 0.2s;
+}
+
+.login-form .ant-btn-primary:hover:not(:disabled) {
+  background: #0077ed;
+}
+
+.login-form .ant-btn-primary:active:not(:disabled) {
+  background: #006edb;
+}
+
+.login-form .ant-btn-primary:disabled {
+  background: #e5e5e5;
+  color: #86868b;
+  box-shadow: none;
+}
+
+.login-form .ant-form-item {
+  margin-bottom: 18px;
+}
+
+.login-form .phone-item {
+  margin-bottom: 18px;
+}
+
+/* 手机号行样式 */
+.phone-row {
+  margin-bottom: 0;
+  height: 60px;
+  position: relative;
+}
+
+.phone-row .phone-item {
+  margin-bottom: 0;
+  height: 38px;
+  position: relative;
+}
+
+.phone-row .phone-item .ant-form-item-explain {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  right: 0;
+}
+
+.phone-row .phone-item .ant-input::placeholder {
+  color: #b8b8b8;
+  font-size: 13px;
+}
+
+.phone-row .phone-item .ant-input-affix-wrapper {
+  padding-right: 45px;
+}
+
+.modify-phone-btn {
+  position: absolute;
+  right: 8px;
+  top: 4px;
+  height: 30px;
+  width: 30px;
+  min-width: 30px;
+  border-radius: 4px;
+  font-size: 14px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #1d1d1f;
+  white-space: nowrap;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.modify-phone-btn:hover:not(:disabled) {
+  background: #f5f5f7;
+  color: #0071e3;
+}
+
+.modify-phone-btn:disabled {
+  background: transparent;
+  color: #d2d2d7;
+}
+
+/* 验证码行样式 */
+.code-row {
+  margin-bottom: 0;
+  height: 60px;
+  position: relative;
+}
+
+.code-row .code-item {
+  margin-bottom: 0;
+  height: 38px;
+  position: relative;
+}
+
+.code-row .code-item .ant-form-item-explain {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  right: 0;
+}
+
+.code-row .code-item .ant-input-affix-wrapper {
+  padding-right: 70px;
+}
+
+.send-code-btn {
+  position: absolute;
+  right: 0px;
+  top: 4px;
+  height: 30px;
+  min-width: 50px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  border: none;
+  background: transparent;
+  color: #0071e3;
+  white-space: nowrap;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.send-code-btn:hover:not(:disabled) {
+  background: #f5f5f7;
+  color: #0077ed;
+}
+
+.send-code-btn:disabled {
+  background: transparent;
+  color: #d2d2d7;
+}
+
+.send-code-btn .anticon {
+  font-size: 14px;
+}
+
+.login-button-item {
+  margin-bottom: 16px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+
+/* 响应式设计 */
+@media (max-width: 576px) {
+  .login-box {
+    padding: 24px 20px;
+    max-width: 320px;
+  }
+
+  .login-form .ant-btn-primary {
+    height: 40px;
+    font-size: 15px;
+  }
+
+  .send-code-btn {
+    padding: 0 12px;
+    font-size: 13px;
+  }
+}
+
+/* 验证码输入框动画 */
+.code-row {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 验证码弹窗样式 */
+.verification-modal-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  white-space: nowrap;
+  min-height: 40px;
+}
+.css-dev-only-do-not-override-ac2jek.ant-modal-confirm .ant-modal-confirm-btns{
+    margin-top:0px;
+}
+
+.verification-modal-content .modal-text {
+  flex: 0 0 auto;
+  text-align: left;
+  font-size: 14px;
+  color: #1d1d1f;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.5;
+}
+
+.verification-modal-content .modal-text strong {
+  color: #0071e3;
+  font-size: 16px;
+  margin-left: 4px;
+  line-height: 1.5;
+}
+
+.verification-modal-content .ant-btn-link {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  font-size: 13px;
+  margin-left: 12px;
+  line-height: 1.5;
+}

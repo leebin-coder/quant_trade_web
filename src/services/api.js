@@ -1,9 +1,17 @@
 import axios from 'axios'
 import { message } from 'antd'
 
-// 创建axios实例
+// 创建axios实例 - 用于业务接口（带 /api 前缀）
 const api = axios.create({
   baseURL: '/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
+// 创建axios实例 - 用于认证接口（不带 /api 前缀）
+const authApi = axios.create({
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -25,40 +33,65 @@ api.interceptors.request.use(
   }
 )
 
-// 响应拦截器
+// 响应拦截器 - 通用错误处理函数
+const responseErrorHandler = (error) => {
+  if (error.response) {
+    const { status, data } = error.response
+    switch (status) {
+      case 401:
+        message.error('登录已过期，请重新登录')
+        // 清除登录信息
+        localStorage.removeItem('token')
+        localStorage.removeItem('userId')
+        localStorage.removeItem('nickName')
+        // 跳转到登录页
+        window.location.href = '/login'
+        break
+      case 403:
+        message.error('拒绝访问')
+        break
+      case 404:
+        message.error('请求资源不存在')
+        break
+      case 500:
+        message.error('服务器错误')
+        break
+      default:
+        message.error(data.message || '请求失败')
+    }
+  } else {
+    message.error('网络错误,请检查网络连接')
+  }
+  return Promise.reject(error)
+}
+
+// 响应拦截器 - 业务接口
 api.interceptors.response.use(
   (response) => {
     const { data } = response
     return data
   },
-  (error) => {
-    if (error.response) {
-      const { status, data } = error.response
-      switch (status) {
-        case 401:
-          message.error('未授权,请重新登录')
-          // 可以跳转到登录页
-          break
-        case 403:
-          message.error('拒绝访问')
-          break
-        case 404:
-          message.error('请求资源不存在')
-          break
-        case 500:
-          message.error('服务器错误')
-          break
-        default:
-          message.error(data.message || '请求失败')
-      }
-    } else {
-      message.error('网络错误,请检查网络连接')
-    }
-    return Promise.reject(error)
-  }
+  responseErrorHandler
+)
+
+// 响应拦截器 - 认证接口
+authApi.interceptors.response.use(
+  (response) => {
+    const { data } = response
+    return data
+  },
+  responseErrorHandler
 )
 
 // API接口定义
+// 认证相关接口（不使用 /api 前缀）
+export const authAPI = {
+  // 发送验证码
+  sendCode: (phone) => authApi.post('/api/auth/send-code', { phone }),
+  // 登录
+  login: (phone, code) => authApi.post('/api/auth/login', { phone, code }),
+}
+
 export const dashboardAPI = {
   // 获取仪表盘数据
   getDashboardData: () => api.get('/dashboard'),
