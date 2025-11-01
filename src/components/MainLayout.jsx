@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Layout, Menu, theme, Dropdown, Avatar, Modal } from 'antd'
 import {
@@ -8,7 +8,10 @@ import {
   HistoryOutlined,
   StockOutlined,
   LogoutOutlined,
+  FullscreenOutlined,
+  FullscreenExitOutlined,
 } from '@ant-design/icons'
+import AIFloatingBall from './AIFloatingBall'
 import './MainLayout.css'
 
 const { Header, Content, Sider } = Layout
@@ -22,7 +25,7 @@ const menuItems = [
   {
     key: '/quotes',
     icon: <StockOutlined />,
-    label: '行情',
+    label: '市场行情',
   },
   {
     key: '/market',
@@ -44,6 +47,7 @@ const menuItems = [
 function MainLayout() {
   const [collapsed, setCollapsed] = useState(true)
   const [isHovering, setIsHovering] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const {
@@ -52,6 +56,26 @@ function MainLayout() {
 
   // 计算当前是否应该展开
   const shouldExpand = !collapsed || isHovering
+
+  // 计算右侧内容区域的左边距
+  const contentMarginLeft = isFullscreen ? 0 : (shouldExpand ? 200 : 70)
+
+  // 切换全屏
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen)
+  }
+
+  // 监听ESC键退出全屏
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isFullscreen])
 
   // 获取用户信息，昵称默认为"韭菜+手机号后四位"
   const getDisplayName = () => {
@@ -98,7 +122,13 @@ function MainLayout() {
   ]
 
   return (
-    <Layout style={{ minHeight: '100vh', background: '#f5f5f7' }}>
+    <Layout style={{ minHeight: '100vh', height: '100vh', background: '#f5f5f7', overflow: 'hidden' }}>
+      {/* 全屏提示 */}
+      <div className={`fullscreen-tip ${isFullscreen ? 'show' : ''}`}>
+        <div className="fullscreen-tip-key">ESC</div>
+        <div className="fullscreen-tip-text">退出全屏</div>
+      </div>
+
       {/* 侧边栏 */}
       <Sider
         width={shouldExpand ? 200 : 70}
@@ -108,10 +138,10 @@ function MainLayout() {
         className="custom-sider"
         style={{
           position: 'fixed',
-          left: 0,
+          left: isFullscreen ? -80 : 0,
           top: 0,
           bottom: 0,
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           zIndex: 1000,
         }}
         onMouseEnter={() => setIsHovering(true)}
@@ -154,8 +184,8 @@ function MainLayout() {
       <Layout
         style={{
           background: '#f5f5f7',
-          marginLeft: 70,
-          transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          marginLeft: contentMarginLeft,
+          transition: 'margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         <Header
@@ -169,55 +199,86 @@ function MainLayout() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            position: 'fixed',
+            top: isFullscreen ? -48 : 0,
+            left: contentMarginLeft,
+            right: 0,
+            zIndex: 999,
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
           <div style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f' }}>
             {menuItems.find(item => item.key === location.pathname)?.label}
           </div>
-          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                cursor: 'pointer',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                transition: 'background 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.04)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent'
-              }}
-            >
-              <Avatar
-                size="small"
-                style={{ background: '#52c41a', fontSize: '16px' }}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(0, 0, 0, 0.04)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                }}
               >
-                🌱
-              </Avatar>
-              <span style={{ fontSize: '14px', color: '#1d1d1f', fontWeight: 500 }}>
-                {displayName}
-              </span>
+                <Avatar
+                  size="small"
+                  style={{ background: '#52c41a', fontSize: '16px' }}
+                >
+                  🌱
+                </Avatar>
+                <span style={{ fontSize: '14px', color: '#1d1d1f', fontWeight: 500 }}>
+                  {displayName}
+                </span>
+              </div>
+            </Dropdown>
+            <div
+              className="fullscreen-btn"
+              onClick={toggleFullscreen}
+            >
+              {isFullscreen ? (
+                <FullscreenExitOutlined style={{ fontSize: '16px' }} />
+              ) : (
+                <FullscreenOutlined style={{ fontSize: '16px' }} />
+              )}
             </div>
-          </Dropdown>
+          </div>
         </Header>
-        <Content style={{ margin: '20px', padding: 0 }}>
+        <Content style={{
+          margin: isFullscreen ? '0' : '12px',
+          marginTop: isFullscreen ? '0' : '60px',
+          padding: 0,
+          height: isFullscreen ? '100vh' : 'calc(100vh - 72px)',
+          overflow: 'hidden',
+          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}>
           <div
+            className="content-area"
             style={{
               padding: 24,
-              minHeight: 'calc(100vh - 108px)',
+              height: '100%',
               background: '#ffffff',
-              borderRadius: 12,
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
+              borderRadius: isFullscreen ? 0 : 8,
+              boxShadow: isFullscreen ? 'none' : '0 1px 3px rgba(0, 0, 0, 0.06)',
+              overflow: 'auto',
+              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
             <Outlet />
           </div>
         </Content>
       </Layout>
+
+      {/* AI悬浮球 */}
+      <AIFloatingBall />
     </Layout>
   )
 }

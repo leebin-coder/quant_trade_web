@@ -102,4 +102,82 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 展示区域滚动条样式 */
+.content-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.content-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.content-area::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.content-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* 全屏按钮样式 */
+.fullscreen-btn {
+  margin-left: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: background 0.2s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  color: #1d1d1f;
+}
+
+.fullscreen-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* 全屏提示 */
+.fullscreen-tip {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  padding: 10px 16px;
+  border-radius: 8px;
+  z-index: 1001;
+  opacity: 0;
+  transform: translateY(-10px) scale(0.8);
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  cursor: default;
+}
+
+.fullscreen-tip.show {
+  opacity: 0.2;
+  transform: translateY(0) scale(0.8);
+  pointer-events: auto;
+}
+
+.fullscreen-tip.show:hover {
+  opacity: 0.4;
+}
+
+.fullscreen-tip-key {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 3px;
+  letter-spacing: 2px;
+}
+
+.fullscreen-tip-text {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  text-align: center;
+  font-weight: 400;
+}
+
 

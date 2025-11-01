@@ -1,0 +1,374 @@
+.quotes-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tab Bar 顶部居中 */
+.quotes-tabs-wrapper {
+  position: sticky;
+  top: -24px;
+  z-index: 100;
+  background: #ffffff;
+  margin: -24px -24px 0 -24px;
+  padding: 0 24px;
+  display: flex;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+}
+
+/* 悬浮：股票选择器 */
+.floating-selector {
+  position: absolute;
+  left: 0;
+  top: 26px;
+  z-index: 200;
+}
+
+/* 悬浮：选中的股票标签列表 */
+.floating-stocks-list {
+  position: absolute;
+  left: 0;
+  top: 62px;
+  width: 80px;
+  max-height: calc(100vh - 174px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 199;
+}
+
+.floating-stocks-list::-webkit-scrollbar {
+  display: none;
+}
+
+.floating-stocks-list > *:last-child {
+  margin-bottom: 10 !important;
+}
+
+/* Tabs 样式 */
+.quotes-tabs {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.quotes-tabs .ant-tabs-nav {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.quotes-tabs .ant-tabs-nav-list {
+  justify-content: center;
+}
+
+.quotes-tabs .ant-tabs-tab {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.65);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.quotes-tabs .ant-tabs-tab:hover {
+  color: #1890ff;
+}
+
+.quotes-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #1890ff;
+  font-weight: 600;
+}
+
+.quotes-tabs .ant-tabs-ink-bar {
+  background: linear-gradient(90deg, #4a7bc9 0%, #8b5fa8 33%, #c94a7b 66%, #e89e4a 100%);
+  height: 2px;
+  border-radius: 1px 1px 0 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.quotes-tabs .ant-tabs-content-holder {
+  flex: 1;
+  overflow: auto;
+}
+
+/* 选中的股票标签 */
+.selected-stock-tag {
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+  padding: 5px 4px;
+  background: rgba(255, 255, 255, 0.60);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: move;
+  cursor: grab;
+  animation: slideInFromLeft 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  position: relative;
+  overflow: hidden;
+  width: 70px;
+  height: 38px;
+  flex-shrink: 0;
+  margin-bottom: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.selected-stock-tag:active {
+  cursor: grabbing;
+}
+
+/* 右上角反光效果 */
+.selected-stock-tag::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40%;
+  height: 50%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 100%);
+  border-radius: 0 10px 0 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.selected-stock-tag::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #4a7bc9 0%, #8b5fa8 33%, #c94a7b 66%, #e89e4a 100%);
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+}
+
+.selected-stock-tag:hover {
+  border-color: rgba(255, 255, 255, 0.50);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.12), 0 3px 10px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.70);
+}
+
+.selected-stock-tag:hover::after {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.selected-stock-tag.active {
+  border-color: rgba(255, 255, 255, 0.60);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.10), inset 0 1px 0 rgba(255, 255, 255, 1);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.selected-stock-tag.active::after {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+/* 涨的渐变：混入更多红色 */
+.selected-stock-tag.trend-up::before {
+  background: linear-gradient(135deg, #4a7bc9 0%, #8b5fa8 20%, #c94a7b 50%, #e85555 80%, #ff6b6b 100%);
+  opacity: 0.10;
+}
+
+/* 跌的渐变：混入更多绿色 */
+.selected-stock-tag.trend-down::before {
+  background: linear-gradient(135deg, #4a7bc9 0%, #4aa88b 20%, #52c41a 50%, #3aa867 80%, #2d8659 100%);
+  opacity: 0.10;
+}
+
+/* 涨的卡片悬停 */
+.selected-stock-tag.trend-up:hover::before {
+  opacity: 0.20;
+}
+
+/* 跌的卡片悬停 */
+.selected-stock-tag.trend-down:hover::before {
+  opacity: 0.20;
+}
+
+/* 涨的卡片选中 */
+.selected-stock-tag.trend-up.active::before {
+  opacity: 0.35;
+}
+
+/* 跌的卡片选中 */
+.selected-stock-tag.trend-down.active::before {
+  opacity: 0.35;
+}
+
+.selected-stock-tag.dragging {
+  opacity: 0.6;
+  transform: scale(1.05) rotate(3deg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25), 0 6px 16px rgba(0, 0, 0, 0.18);
+  z-index: 1000;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+/* 拖拽时的占位效果 */
+.selected-stock-tag.drag-over {
+  transform: translateY(4px);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.stock-tag-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+}
+
+.stock-tag-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.88);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  text-align: center;
+}
+
+.stock-tag-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  position: relative;
+  z-index: 1;
+}
+
+.stock-tag-code {
+  font-size: 8px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.65);
+  line-height: 1.2;
+}
+
+.stock-tag-exchange {
+  margin: 0;
+  font-size: 6px;
+  padding: 1px 2px;
+  border: none;
+  line-height: 1.2;
+}
+
+.stock-tag-close {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 7px;
+  color: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 2px;
+  opacity: 0;
+  z-index: 4;
+}
+
+.selected-stock-tag:hover .stock-tag-close {
+  opacity: 1;
+}
+
+.stock-tag-close:hover {
+  color: rgba(0, 0, 0, 0.75);
+  transform: scale(1.15) rotate(90deg);
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 拖拽放置后的弹性动画 */
+@keyframes dropBounce {
+  0% {
+    transform: scale(1.1);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.selected-stock-tag.just-dropped {
+  animation: dropBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Tab 内容区域 */
+.tab-content {
+  padding: 24px;
+  height: 100%;
+  position: relative;
+}
+
+.tab-content-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  font-size: 24px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.25);
+}
+
+/* 内容切换动画 */
+.quotes-tabs .ant-tabs-content {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.quotes-tabs .ant-tabs-tabpane {
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100%;
+  overflow: hidden;
+}
+
+.quotes-tabs .ant-tabs-tabpane-hidden {
+  opacity: 0;
+  display: none;
+}
+
+.quotes-tabs .ant-tabs-tabpane-active {
+  opacity: 1;
+  display: block;
+  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

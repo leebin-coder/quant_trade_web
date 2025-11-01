@@ -1,0 +1,336 @@
+/* 触发器 */
+.market-selector-trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: linear-gradient(135deg, rgba(74, 123, 201, 0.28) 0%, rgba(139, 95, 168, 0.28) 33%, rgba(201, 74, 123, 0.28) 66%, rgba(232, 158, 74, 0.28) 100%);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 26px;
+  width: 80px;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.market-selector-trigger:hover {
+  background: linear-gradient(135deg, rgba(74, 123, 201, 0.40) 0%, rgba(139, 95, 168, 0.40) 33%, rgba(201, 74, 123, 0.40) 66%, rgba(232, 158, 74, 0.40) 100%);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16), 0 2px 4px rgba(0, 0, 0, 0.10);
+  transform: translateY(-1px);
+}
+
+.filter-icon {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.85);
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.5));
+}
+
+.market-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.90);
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+/* 下拉面板 */
+.market-selector-dropdown {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  width: 500px;
+  height: 580px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 市场选择区域 */
+.market-selection {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+}
+
+.market-level1 {
+  display: flex;
+  gap: 5px;
+  padding: 8px;
+  background: #e8e8ed;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.level1-item {
+  padding: 5px 10px;
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.65);
+  background: #fafafa;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.level1-item span {
+  position: relative;
+  z-index: 1;
+}
+
+.level1-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #4a7bc9 0%, #8b5fa8 33%, #c94a7b 66%, #e89e4a 100%);
+  opacity: 0;
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.level1-item:hover:not(.disabled)::before {
+  opacity: 1;
+}
+
+.level1-item:hover:not(.disabled) {
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.level1-item.active::before {
+  opacity: 1;
+}
+
+.level1-item.active {
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.level1-item.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.market-level2 {
+  padding: 6px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  background: #e8e8ed;
+  min-height: 32px;
+  height: 32px;
+}
+
+.level2-item {
+  padding: 2px 8px;
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.65);
+  background: #fafafa;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.level2-item span {
+  position: relative;
+  z-index: 1;
+}
+
+.level2-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #4a7bc9 0%, #8b5fa8 33%, #c94a7b 66%, #e89e4a 100%);
+  opacity: 0;
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.level2-item:hover:not(.disabled)::before {
+  opacity: 1;
+}
+
+.level2-item:hover:not(.disabled) {
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.level2-item.active::before {
+  opacity: 1;
+}
+
+.level2-item.active {
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.level2-item.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* 股票搜索区域 */
+.stock-search-area {
+  padding: 8px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #e8e8ed;
+}
+
+.stock-search-input {
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.stock-search-input input {
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 6px;
+}
+
+.stock-search-input .anticon {
+  font-size: 11px;
+}
+
+.stock-list-container {
+  height: 450px;
+  overflow-y: auto;
+  flex-shrink: 0;
+  background: #e8e8ed;
+}
+
+.stock-list-container::-webkit-scrollbar {
+  width: 0px;
+}
+
+.stock-list-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.stock-list-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
+}
+
+.stock-list-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+}
+
+.loading-more {
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+}
+
+/* 股票网格布局 */
+.stock-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: #e8e8ed;
+}
+
+.stock-grid-item {
+  cursor: pointer;
+  padding: 7px;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.stock-grid-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #4a7bc9 0%, #8b5fa8 33%, #c94a7b 66%, #e89e4a 100%);
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+}
+
+.stock-grid-item:hover::before {
+  opacity: 0.15;
+}
+
+.stock-grid-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12), 0 3px 8px rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.stock-grid-item.selected {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16), 0 3px 10px rgba(0, 0, 0, 0.10);
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.stock-grid-item.selected::before {
+  opacity: 0.35;
+}
+
+/* 第一行：股票简称 - 放大加粗 */
+.stock-name-large {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.88);
+  position: relative;
+  z-index: 1;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+/* 第二行：股票代码 + 交易所标签 */
+.stock-code-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  z-index: 1;
+}
+
+.stock-code-small {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.stock-grid-item .stock-exchange-tag {
+  margin: 0;
+  font-size: 8px;
+  padding: 1px 4px;
+  border: none;
+  line-height: 1.2;
+}

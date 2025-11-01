@@ -1,0 +1,354 @@
+/* 悬浮小球 */
+.ai-floating-ball {
+  position: fixed;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4a7bc9 0%, #8b5fa8 25%, #c94a7b 50%, #e89e4a 75%, #4a7bc9 100%);
+  background-size: 300% 300%;
+  animation: gradientFlow 8s ease infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  user-select: none;
+  box-shadow:
+    inset 0 -5px 13px rgba(0, 0, 0, 0.24),
+    inset 0 5px 13px rgba(255, 255, 255, 0.48),
+    inset -3px 0 10px rgba(0, 0, 0, 0.16),
+    inset 3px 0 10px rgba(255, 255, 255, 0.32),
+    0 6px 19px rgba(0, 0, 0, 0.24),
+    0 3px 6px rgba(255, 255, 255, 0.32),
+    0 0 2px rgba(255, 255, 255, 0.4);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              filter 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 小球变暗淡效果 */
+.ai-floating-ball.dimmed {
+  opacity: 0.85;
+  filter: brightness(0.75) saturate(0.9);
+}
+
+.ai-floating-ball:hover {
+  animation: gradientFlowFast 2s ease infinite;
+  box-shadow:
+    inset 0 -5px 13px rgba(0, 0, 0, 0.24),
+    inset 0 5px 13px rgba(255, 255, 255, 0.64),
+    inset -3px 0 10px rgba(0, 0, 0, 0.16),
+    inset 3px 0 10px rgba(255, 255, 255, 0.48),
+    0 0 16px rgba(74, 123, 201, 0.48),
+    0 0 24px rgba(139, 95, 168, 0.4),
+    0 0 32px rgba(201, 74, 123, 0.32),
+    0 6px 19px rgba(0, 0, 0, 0.24);
+  transform: scale(1.05);
+}
+
+.ai-floating-ball:active {
+  transform: scale(0.95);
+}
+
+/* AI文字 */
+.ai-text {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 20px;
+  font-weight: 900;
+  font-family: 'Arial Rounded MT Bold', 'Helvetica Rounded', Arial, sans-serif;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: absolute;
+}
+
+/* AI文字消散效果 */
+.ai-text.scatter {
+  opacity: 0;
+  transform: scale(0.3);
+}
+
+/* AI文字汇聚效果 */
+.ai-text.gather {
+  opacity: 1;
+  transform: scale(1);
+  animation: textGather 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes textGather {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 消散的小点 */
+.ai-dot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+}
+
+.ai-dot.dot-1 {
+  animation: scatter1 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.ai-dot.dot-2 {
+  animation: scatter2 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.ai-dot.dot-3 {
+  animation: scatter3 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.ai-dot.dot-4 {
+  animation: scatter4 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.ai-dot.dot-5 {
+  animation: scatter5 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.ai-dot.dot-6 {
+  animation: scatter6 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes scatter1 {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-15px, -15px);
+    opacity: 0;
+  }
+}
+
+@keyframes scatter2 {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(15px, -15px);
+    opacity: 0;
+  }
+}
+
+@keyframes scatter3 {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-18px, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes scatter4 {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(18px, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes scatter5 {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-15px, 15px);
+    opacity: 0;
+  }
+}
+
+@keyframes scatter6 {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(15px, 15px);
+    opacity: 0;
+  }
+}
+
+/* 渐变动画 - 正常速度 */
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 渐变动画 - 快速 */
+@keyframes gradientFlowFast {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 弹窗 */
+.ai-popup {
+  position: fixed;
+  width: 300px;
+  height: 485px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  z-index: 9998;
+  padding: 1.5px;
+  background: linear-gradient(135deg,
+    #4a7bc9 0%,
+    #8b5fa8 25%,
+    #c94a7b 50%,
+    #e89e4a 75%,
+    #4a7bc9 100%
+  );
+  background-size: 300% 300%;
+  animation: borderGlow 6s ease infinite;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 弹窗显示/隐藏动画 */
+.ai-popup.show {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.ai-popup.hide {
+  opacity: 0;
+  transform: scale(0.1);
+}
+
+@keyframes borderGlow {
+  0%, 100% {
+    background-position: 0% 50%;
+    box-shadow:
+      0 0 15px rgba(74, 123, 201, 0.3),
+      0 0 25px rgba(139, 95, 168, 0.2),
+      0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+  50% {
+    background-position: 100% 50%;
+    box-shadow:
+      0 0 20px rgba(201, 74, 123, 0.4),
+      0 0 30px rgba(232, 158, 74, 0.3),
+      0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+}
+
+/* 弹跳动画 */
+.ai-floating-ball.bouncing {
+  animation: bounce 2s cubic-bezier(0.4, 0, 0.2, 1) forwards, gradientFlow 8s ease infinite;
+}
+
+@keyframes bounce {
+  0% {
+    transform: translateY(0);
+  }
+  10% {
+    transform: translateY(-80px);
+  }
+  20% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-50px);
+  }
+  40% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-25px);
+  }
+  60% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.ai-popup-content {
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  border-radius: 6.5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.ai-popup-row1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.ai-robot-icon {
+  font-size: 24px;
+  color: #4a7bc9;
+}
+
+.ai-popup-text1 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ai-popup-row2 {
+  font-size: 14px;
+  color: rgba(29, 29, 31, 0.5);
+  font-weight: 400;
+}
