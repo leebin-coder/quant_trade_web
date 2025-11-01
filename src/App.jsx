@@ -3,6 +3,7 @@ import MainLayout from './components/MainLayout'
 import PrivateRoute from './components/PrivateRoute'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import Quotes from './pages/Quotes'
 import MarketMonitor from './pages/MarketMonitor'
 import StrategyManage from './pages/StrategyManage'
 import TradeHistory from './pages/TradeHistory'
@@ -24,6 +25,7 @@ function App() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="quotes" element={<Quotes />} />
         <Route path="market" element={<MarketMonitor />} />
         <Route path="strategy" element={<StrategyManage />} />
         <Route path="history" element={<TradeHistory />} />
