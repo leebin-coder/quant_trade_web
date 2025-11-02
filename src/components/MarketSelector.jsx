@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { Dropdown, Menu, Input, List, Tag, Spin } from 'antd'
-import { FilterOutlined, SearchOutlined, CloseOutlined } from '@ant-design/icons'
+import { Dropdown, Menu, Input, List, Tag, Spin, Modal, Button, Tabs } from 'antd'
+import { FilterOutlined, SearchOutlined, CloseOutlined, InfoCircleOutlined, QrcodeOutlined } from '@ant-design/icons'
+import contactMeImg from '../assets/contract_me.jpeg'
+import donateImg from '../assets/donate.JPG'
 import './MarketSelector.css'
 
 const MarketSelector = () => {
@@ -13,6 +15,7 @@ const MarketSelector = () => {
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
   const listContainerRef = useRef(null)
+  const [qrCodeVisible, setQrCodeVisible] = useState(false)
 
   // 市场配置
   const marketConfig = {
@@ -38,8 +41,11 @@ const MarketSelector = () => {
     '外汇': { items: [], enabled: [] },
   }
 
-  // 可选择的一级市场
-  const enabledLevel1 = ['全部', '关注', '股票']
+  // 可选择的一级市场 - 关注在最左边
+  const enabledLevel1 = ['关注', '全部', '股票']
+
+  // 一级市场的顺序 - 关注在最左边
+  const level1Order = ['关注', '全部', '股票', '全球', '债券', '基金', '期货', '外汇']
 
   // 获取交易所代码
   const getExchanges = (level1, level2) => {
@@ -153,9 +159,9 @@ const MarketSelector = () => {
       // 取消选中
       setSelectedStocks(selectedStocks.filter(s => s.stockCode !== stock.stockCode))
     } else {
-      // 添加选中，随机添加涨跌属性
+      // 添加选中到最前面，随机添加涨跌属性
       const trend = Math.random() > 0.5 ? 'up' : 'down'
-      setSelectedStocks([...selectedStocks, { ...stock, trend }])
+      setSelectedStocks([{ ...stock, trend }, ...selectedStocks])
     }
   }
 
@@ -184,7 +190,7 @@ const MarketSelector = () => {
       {/* 市场选择区域 */}
       <div className="market-selection">
         <div className="market-level1">
-          {Object.keys(marketConfig).map(level1 => {
+          {level1Order.map(level1 => {
             const isEnabled = enabledLevel1.includes(level1)
             return (
               <div
@@ -198,18 +204,40 @@ const MarketSelector = () => {
           })}
         </div>
         <div className="market-level2">
-          {marketConfig[selectedMarket.level1].items.map(level2 => {
-            const isEnabled = marketConfig[selectedMarket.level1].enabled.includes(level2)
-            return (
-              <div
-                key={level2}
-                className={`level2-item ${selectedMarket.level2 === level2 ? 'active' : ''} ${!isEnabled ? 'disabled' : ''}`}
-                onClick={() => handleMarketSelect(selectedMarket.level1, level2)}
-              >
-                <span>{level2}</span>
+          {marketConfig[selectedMarket.level1].items.length > 0 ? (
+            marketConfig[selectedMarket.level1].items.map(level2 => {
+              const isEnabled = marketConfig[selectedMarket.level1].enabled.includes(level2)
+              return (
+                <div
+                  key={level2}
+                  className={`level2-item ${selectedMarket.level2 === level2 ? 'active' : ''} ${!isEnabled ? 'disabled' : ''}`}
+                  onClick={() => handleMarketSelect(selectedMarket.level1, level2)}
+                >
+                  <span>{level2}</span>
+                </div>
+              )
+            })
+          ) : (
+            <div className="level2-empty-notice">
+              <InfoCircleOutlined className="notice-icon" />
+              <div className="notice-marquee">
+                  <div className="marquee-content">
+                      Developer funds are limited, and the current version only processes A-share data. If you want
+                      better data services, please scan the QR code on the right to contact me or donate to me, and I
+                      will consider your needs as soon as possible
+                  </div>
               </div>
-            )
-          })}
+              <Button
+                type="text"
+                icon={<QrcodeOutlined />}
+                size="small"
+                className="donate-btn"
+                onClick={() => setQrCodeVisible(true)}
+              >
+                联系我
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -279,18 +307,81 @@ const MarketSelector = () => {
       </div>
     ),
     dropdown: (
-      <Dropdown
-        overlay={menu}
-        trigger={['click']}
-        visible={visible}
-        onVisibleChange={setVisible}
-        placement="bottomLeft"
-      >
-        <div className="market-selector-trigger">
-          <FilterOutlined className="filter-icon" />
-          <span className="market-text">STOCKS</span>
-        </div>
-      </Dropdown>
+      <>
+        <Dropdown
+          overlay={menu}
+          trigger={['click']}
+          visible={visible}
+          onVisibleChange={setVisible}
+          placement="bottomLeft"
+        >
+          <div className="market-selector-trigger">
+            <FilterOutlined className="filter-icon" />
+            <span className="market-text">STOCKS</span>
+          </div>
+        </Dropdown>
+
+        {/* 联系我/捐赠二维码弹窗 */}
+        <Modal
+          title="联系方式"
+          open={qrCodeVisible}
+          onCancel={() => setQrCodeVisible(false)}
+          footer={null}
+          centered
+          width={400}
+        >
+          <Tabs
+            defaultActiveKey="contact"
+            centered
+            items={[
+              {
+                key: 'contact',
+                label: '联系我',
+                children: (
+                  <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                    <img
+                      src={contactMeImg}
+                      alt="联系我"
+                      style={{
+                        width: '200px',
+                        height: '200px',
+                        margin: '0 auto 16px',
+                        borderRadius: '8px',
+                        objectFit: 'contain'
+                      }}
+                    />
+                    <p style={{ color: '#666', fontSize: '14px', margin: 0 }}>
+                      扫码添加微信，获取更多帮助
+                    </p>
+                  </div>
+                )
+              },
+              {
+                key: 'donate',
+                label: '捐赠支持',
+                children: (
+                  <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                    <img
+                      src={donateImg}
+                      alt="捐赠"
+                      style={{
+                        width: '200px',
+                        height: '200px',
+                        margin: '0 auto 16px',
+                        borderRadius: '8px',
+                        objectFit: 'contain'
+                      }}
+                    />
+                    <p style={{ color: '#666', fontSize: '14px', margin: 0 }}>
+                      感谢您的支持，助力项目更好发展
+                    </p>
+                  </div>
+                )
+              }
+            ]}
+          />
+        </Modal>
+      </>
     ),
     selectedStocks,
     setSelectedStocks,

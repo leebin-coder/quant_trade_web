@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { Row, Col, Card, Table, Tag, Input, Select, Space } from 'antd'
+import { useState, useMemo } from 'react'
+import { Row, Col, Card, Table, Tag, Input, Select, Space, Tabs } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 import ReactECharts from 'echarts-for-react'
+import LightweightChart from '../components/LightweightChart'
 
 const { Option } = Select
 
@@ -26,6 +27,34 @@ function MarketMonitor() {
   const generateVolumeData = () => {
     return Array.from({ length: 60 }, () => Math.floor(Math.random() * 100000 + 50000))
   }
+
+  // 生成 Lightweight Charts 格式的数据 - 使用 useMemo 缓存
+  const lightweightChartData = useMemo(() => {
+    const data = []
+    let base = 1850
+    const today = new Date()
+
+    for (let i = 0; i < 60; i++) {
+      const date = new Date(today)
+      date.setDate(date.getDate() - 60 + i)
+
+      const open = base + Math.random() * 20 - 10
+      const close = open + Math.random() * 30 - 15
+      const high = Math.max(open, close) + Math.random() * 10
+      const low = Math.min(open, close) - Math.random() * 10
+
+      data.push({
+        time: date.toISOString().split('T')[0], // 格式: '2023-01-01'
+        open: parseFloat(open.toFixed(2)),
+        high: parseFloat(high.toFixed(2)),
+        low: parseFloat(low.toFixed(2)),
+        close: parseFloat(close.toFixed(2)),
+      })
+
+      base = close
+    }
+    return data
+  }, [selectedStock]) // 当选中的股票改变时重新生成
 
   // K线图配置
   const klineOption = {
@@ -249,10 +278,13 @@ function MarketMonitor() {
     },
   ]
 
+  // 获取选中股票的详细信息
+  const selectedStockInfo = realtimeData.find(stock => stock.code === selectedStock) || realtimeData[0]
+
   return (
     <div>
       {/* 搜索和筛选 */}
-      <Card style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: 16, boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
         <Space size="large">
           <Input
             placeholder="输入股票代码或名称"
@@ -274,13 +306,89 @@ function MarketMonitor() {
         </Space>
       </Card>
 
-      {/* K线图 */}
-      <Card style={{ marginBottom: 16 }}>
-        <ReactECharts option={klineOption} style={{ height: 600 }} />
-      </Card>
+      {/* 股票详情 + K线图 */}
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        {/* 左侧：选中股票信息卡片 */}
+        <Col span={6}>
+          <Card
+            style={{
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+              borderRadius: '8px',
+            }}
+          >
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
+                {selectedStockInfo.name}
+              </div>
+              <div style={{ fontSize: '14px', color: '#999', marginBottom: '16px' }}>
+                {selectedStockInfo.code}
+              </div>
+              <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '8px', color: selectedStockInfo.change >= 0 ? '#f5222d' : '#52c41a' }}>
+                ¥{selectedStockInfo.price}
+              </div>
+              <div style={{ marginBottom: '24px' }}>
+                <Tag color={selectedStockInfo.change >= 0 ? 'red' : 'green'} style={{ fontSize: '16px', padding: '4px 12px' }}>
+                  {selectedStockInfo.change >= 0 ? '+' : ''}{selectedStockInfo.change}%
+                </Tag>
+              </div>
+              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', textAlign: 'left' }}>
+                  <span style={{ color: '#666' }}>成交量</span>
+                  <span style={{ fontWeight: '500' }}>{(selectedStockInfo.volume / 10000).toFixed(2)}万</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', textAlign: 'left' }}>
+                  <span style={{ color: '#666' }}>开盘</span>
+                  <span style={{ fontWeight: '500' }}>¥{(selectedStockInfo.price * (1 - selectedStockInfo.change / 100 / 2)).toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', textAlign: 'left' }}>
+                  <span style={{ color: '#666' }}>最高</span>
+                  <span style={{ fontWeight: '500', color: '#f5222d' }}>¥{(selectedStockInfo.price * 1.02).toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'left' }}>
+                  <span style={{ color: '#666' }}>最低</span>
+                  <span style={{ fontWeight: '500', color: '#52c41a' }}>¥{(selectedStockInfo.price * 0.98).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </Col>
+
+        {/* 右侧：K线图 */}
+        <Col span={18}>
+          <Card
+            style={{
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+              borderRadius: '8px',
+            }}
+          >
+            <Tabs
+              defaultActiveKey="echarts"
+              items={[
+                {
+                  key: 'echarts',
+                  label: 'ECharts K线图',
+                  children: <ReactECharts option={klineOption} style={{ height: 600 }} />,
+                },
+                {
+                  key: 'lightweight',
+                  label: 'TradingView Lightweight Charts',
+                  forceRender: true,
+                  children: (
+                    <LightweightChart
+                      data={lightweightChartData}
+                      height={600}
+                      title={`${selectedStock} - ${selectedStockInfo.name}`}
+                    />
+                  ),
+                },
+              ]}
+            />
+          </Card>
+        </Col>
+      </Row>
 
       {/* 实时报价表 */}
-      <Card title="实时报价">
+      <Card title="实时报价" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
         <Table columns={realtimeColumns} dataSource={realtimeData} />
       </Card>
     </div>
