@@ -5,12 +5,5 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: quant_trade_web
-    ports:
-      - "80:80"
-    networks:
-      - quant-network
+    network_mode: host
     restart: unless-stopped
-
-networks:
-  quant-network:
-    external: true
