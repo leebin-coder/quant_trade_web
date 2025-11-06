@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # 前端服务
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quant_trade_web
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - quant_network
+    restart: unless-stopped
+
+  # 后端服务 (如果你的后端也需要 Docker 化)
+  # 如果后端已经在其他地方运行，可以删除此部分
+  backend:
+    # 这里需要替换为你的后端镜像或 Dockerfile
+    # image: your-backend-image:latest
+    # 或者
+    # build:
+    #   context: ../your-backend-path
+    #   dockerfile: Dockerfile
+    container_name: quant_trade_backend
+    ports:
+      - "8080:8080"
+    networks:
+      - quant_network
+    restart: unless-stopped
+    # environment:
+    #   - DATABASE_URL=your_database_url
+    #   - API_KEY=your_api_key
+
+networks:
+  quant_network:
+    driver: bridge
