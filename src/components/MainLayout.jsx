@@ -10,8 +10,10 @@ import {
   LogoutOutlined,
   FullscreenOutlined,
   FullscreenExitOutlined,
+  BookOutlined,
 } from '@ant-design/icons'
 import AIFloatingBall from './AIFloatingBall'
+import KnowledgeBasePanel from './KnowledgeBasePanel'
 import './MainLayout.css'
 
 const { Header, Content, Sider } = Layout
@@ -48,6 +50,7 @@ function MainLayout() {
   const [collapsed, setCollapsed] = useState(true)
   const [isHovering, setIsHovering] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showKnowledgeBase, setShowKnowledgeBase] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const {
@@ -211,6 +214,13 @@ function MainLayout() {
             {menuItems.find(item => item.key === location.pathname)?.label}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
+            <div
+              className="knowledge-base-btn"
+              onClick={() => setShowKnowledgeBase(true)}
+              title="知识库"
+            >
+              <BookOutlined style={{ fontSize: '18px', fontWeight: 'bold' }} />
+            </div>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <div
                 style={{
@@ -279,6 +289,12 @@ function MainLayout() {
 
       {/* AI悬浮球 */}
       <AIFloatingBall />
+
+      {/* 知识库面板 */}
+      <KnowledgeBasePanel
+        visible={showKnowledgeBase}
+        onClose={() => setShowKnowledgeBase(false)}
+      />
     </Layout>
   )
 }

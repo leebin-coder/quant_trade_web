@@ -6,9 +6,10 @@
 
 ### 核心功能
 - **仪表盘** - 实时查看账户总资产、收益率、策略运行状态等核心指标
-- **行情监控** - 实时行情数据展示，支持K线图、成交量等多维度分析
-- **策略管理** - 创建、启停、监控多个交易策略，支持策略收益对比
-- **交易记录** - 查看历史交易记录，统计分析盈亏情况
+- **行情监控** - 实时行情数据展示,支持K线图、成交量等多维度分析
+- **策略管理** - 创建、启停、监控多个交易策略,支持策略收益对比
+- **交易记录** - 查看历史交易记录,统计分析盈亏情况
+- **知识库** - 内置知识库系统,支持树状结构导航和网页内容展示
 
 ### 技术亮点
 - **现代化技术栈** - React 18 + Vite 构建，开发体验极佳
@@ -31,28 +32,34 @@
 
 ```
 quant_trade_web/
-├── public/                # 静态资源
+├── public/                      # 静态资源
 ├── src/
-│   ├── assets/           # 图片、字体等资源文件
-│   ├── components/       # 公共组件
-│   │   └── MainLayout.jsx   # 主布局组件
-│   ├── pages/            # 页面组件
-│   │   ├── Dashboard.jsx     # 仪表盘
-│   │   ├── MarketMonitor.jsx # 行情监控
-│   │   ├── StrategyManage.jsx # 策略管理
-│   │   └── TradeHistory.jsx  # 交易记录
-│   ├── services/         # API服务
-│   │   └── api.js           # API接口定义
-│   ├── utils/            # 工具函数
-│   │   ├── constants.js     # 常量配置
-│   │   └── format.js        # 格式化函数
-│   ├── styles/           # 样式文件
-│   │   └── global.css       # 全局样式
-│   ├── App.jsx           # 根组件
-│   └── main.jsx          # 入口文件
-├── index.html            # HTML模板
-├── vite.config.js        # Vite配置
-└── package.json          # 项目配置
+│   ├── assets/                 # 图片、字体等资源文件
+│   ├── components/             # 公共组件
+│   │   ├── MainLayout.jsx         # 主布局组件
+│   │   ├── KnowledgeBasePanel.jsx # 知识库面板组件
+│   │   └── KnowledgeBaseTree.jsx  # 知识库树形导航组件
+│   ├── config/                 # 配置文件
+│   │   ├── knowledgeBase.js       # 知识库内容配置
+│   │   └── knowledgeBase.example.js # 知识库配置示例
+│   ├── pages/                  # 页面组件
+│   │   ├── Dashboard.jsx          # 仪表盘
+│   │   ├── MarketMonitor.jsx      # 行情监控
+│   │   ├── StrategyManage.jsx     # 策略管理
+│   │   └── TradeHistory.jsx       # 交易记录
+│   ├── services/               # API服务
+│   │   └── api.js                 # API接口定义
+│   ├── utils/                  # 工具函数
+│   │   ├── constants.js           # 常量配置
+│   │   └── format.js              # 格式化函数
+│   ├── styles/                 # 样式文件
+│   │   └── global.css             # 全局样式
+│   ├── App.jsx                 # 根组件
+│   └── main.jsx                # 入口文件
+├── KNOWLEDGE_BASE_CONFIG.md    # 知识库配置说明文档
+├── index.html                  # HTML模板
+├── vite.config.js              # Vite配置
+└── package.json                # 项目配置
 ```
 
 ## 快速开始
@@ -113,10 +120,22 @@ npm run preview
 - 策略收益对比图表
 
 ### 4. 交易记录 (Trade History)
-- 交易记录列表，支持按时间、策略、方向筛选
-- 今日交易统计（交易次数、成交额、盈亏、胜率）
+- 交易记录列表,支持按时间、策略、方向筛选
+- 今日交易统计(交易次数、成交额、盈亏、胜率)
 - 每日盈亏柱状图
 - 交易次数分布饼图
+
+### 5. 知识库 (Knowledge Base)
+- 点击顶部导航栏的书本图标打开知识库
+- 支持多层级树状结构目录导航
+- iframe嵌入式网页内容展示
+- 四大功能:
+  - 展示/隐藏目录树
+  - 在新窗口中打开当前内容
+  - 全屏/退出全屏显示
+  - 关闭知识库面板
+- macOS风格界面设计
+- 支持自定义配置知识库内容(详见 [知识库配置说明](./KNOWLEDGE_BASE_CONFIG.md))
 
 ## API接口
 
