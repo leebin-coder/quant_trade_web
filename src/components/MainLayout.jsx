@@ -14,6 +14,7 @@ import {
 } from '@ant-design/icons'
 import AIFloatingBall from './AIFloatingBall'
 import KnowledgeBasePanel from './KnowledgeBasePanel'
+import TradingCalendar from './TradingCalendar'
 import './MainLayout.css'
 
 const { Header, Content, Sider } = Layout
@@ -214,12 +215,13 @@ function MainLayout() {
             {menuItems.find(item => item.key === location.pathname)?.label}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
+            <TradingCalendar />
             <div
               className="knowledge-base-btn"
               onClick={() => setShowKnowledgeBase(true)}
               title="知识库"
             >
-              <BookOutlined style={{ fontSize: '18px', fontWeight: 'bold' }} />
+              <BookOutlined style={{ fontSize: '18px' }} />
             </div>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <div

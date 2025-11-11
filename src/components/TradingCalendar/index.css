@@ -1,0 +1,26 @@
+.trading-calendar-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  color: #1d1d1f;
+  font-size: 18px;
+}
+
+.trading-calendar-icon:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #1976d2;
+}
+
+.trading-calendar-popover .ant-popover-inner {
+  padding: 0;
+  border-radius: 8px;
+}
+
+.trading-calendar-popover .ant-popover-arrow {
+  display: none;
+}

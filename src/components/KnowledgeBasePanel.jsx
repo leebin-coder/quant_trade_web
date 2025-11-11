@@ -12,6 +12,10 @@ import {
   CaretUpOutlined,
   CaretDownOutlined,
   EnvironmentOutlined,
+  ReadOutlined,
+  ExpandOutlined,
+  ShrinkOutlined,
+  CompassOutlined,
 } from '@ant-design/icons'
 import KnowledgeBaseTree from './KnowledgeBaseTree'
 import { knowledgeBaseConfig } from '../config/knowledgeBase'
@@ -151,7 +155,8 @@ function KnowledgeBasePanel({ visible, onClose }) {
     }
   }
 
-  const toggleSidebar = () => {
+  const toggleSidebar = (e) => {
+    e?.stopPropagation()
     setSidebarCollapsed(!sidebarCollapsed)
   }
 
@@ -161,23 +166,25 @@ function KnowledgeBasePanel({ visible, onClose }) {
       clearTimeout(hideTimerRef.current)
       hideTimerRef.current = null
     }
-    setShowToggleBtn(true)
+    if (!isResizing) {
+      setShowToggleBtn(true)
+    }
   }
 
   // 鼠标离开分界线区域
   const handleResizeMouseLeave = () => {
-    hideTimerRef.current = setTimeout(() => {
-      if (!isResizing) {
-        setShowToggleBtn(false)
-      }
-    }, 1000)
+    if (!isResizing) {
+      setShowToggleBtn(false)
+    }
   }
 
   // 开始拖拽
   const handleResizeStart = (e) => {
     if (sidebarCollapsed) return
     e.preventDefault()
+    e.stopPropagation()
     setIsResizing(true)
+    setShowToggleBtn(false)
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
   }
@@ -187,6 +194,7 @@ function KnowledgeBasePanel({ visible, onClose }) {
     if (!isResizing) return
 
     let rafId = null
+    let currentWidth = sidebarWidth
 
     const handleMouseMove = (e) => {
       if (rafId) {
@@ -195,8 +203,26 @@ function KnowledgeBasePanel({ visible, onClose }) {
 
       rafId = requestAnimationFrame(() => {
         const newWidth = e.clientX
-        if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= MAX_SIDEBAR_WIDTH) {
-          setSidebarWidth(newWidth)
+
+        // 严格限制：只允许合理的宽度变化
+        if (newWidth < MIN_SIDEBAR_WIDTH - 50 || newWidth > MAX_SIDEBAR_WIDTH + 50) {
+          // 如果鼠标位置异常（太小或太大），忽略此次移动
+          return
+        }
+
+        // 限制在最小和最大宽度之间
+        const clampedWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, newWidth))
+
+        // 防止突变：检查变化幅度
+        const widthChange = Math.abs(clampedWidth - currentWidth)
+        if (widthChange > 100) {
+          // 如果单次变化超过100px，可能是异常，忽略
+          return
+        }
+
+        if (clampedWidth !== currentWidth) {
+          currentWidth = clampedWidth
+          setSidebarWidth(clampedWidth)
         }
       })
     }
@@ -209,7 +235,7 @@ function KnowledgeBasePanel({ visible, onClose }) {
         cancelAnimationFrame(rafId)
       }
       // 保存到 localStorage
-      localStorage.setItem('kb-sidebar-width', sidebarWidth.toString())
+      localStorage.setItem('kb-sidebar-width', currentWidth.toString())
     }
 
     document.addEventListener('mousemove', handleMouseMove)
@@ -260,13 +286,18 @@ function KnowledgeBasePanel({ visible, onClose }) {
         {/* 顶部工具栏 */}
         <div className="panel-header">
           <div className="panel-title">
-            {currentKBLabel}
-            {selectedNode && (
-              <>
-                <span className="title-divider">|</span>
-                {selectedNode.title}
-              </>
-            )}
+            {/* 知识库选择器 */}
+            <Dropdown
+              menu={{ items: kbMenuItems, onClick: handleKBChange }}
+              trigger={['click']}
+              placement="bottomLeft"
+            >
+              <div className="header-kb-selector" title="切换知识库">
+                <ReadOutlined />
+                <span className="kb-label">{currentKBLabel}</span>
+                <DownOutlined />
+              </div>
+            </Dropdown>
           </div>
           <div className="panel-actions">
             <Button
@@ -309,17 +340,10 @@ function KnowledgeBasePanel({ visible, onClose }) {
             style={{ width: sidebarCollapsed ? 0 : sidebarWidth }}
           >
             <div className="sidebar-header">
-              {/* 知识库选择器 */}
-              <Dropdown
-                menu={{ items: kbMenuItems, onClick: handleKBChange }}
-                trigger={['click']}
-                placement="bottomLeft"
-              >
-                <div className="sidebar-kb-selector" title="切换知识库">
-                  <BookOutlined className="sidebar-kb-icon" />
-                  <DownOutlined className="sidebar-kb-arrow" />
-                </div>
-              </Dropdown>
+              {/* 选中节点标题 */}
+              <div className="sidebar-node-title" title={selectedNode?.title || '请选择节点'}>
+                {selectedNode?.title || '请选择节点'}
+              </div>
 
               {/* 控制按钮组 */}
               <div className="sidebar-actions">
@@ -328,31 +352,23 @@ function KnowledgeBasePanel({ visible, onClose }) {
                   size="small"
                   onClick={handleExpandAll}
                   className="sidebar-action-btn"
+                  icon={<ExpandOutlined />}
                   title="全部展开"
-                >
-                  <div className="expand-icon">
-                    <CaretUpOutlined />
-                    <CaretDownOutlined />
-                  </div>
-                </Button>
+                />
                 <Button
                   type="text"
                   size="small"
                   onClick={handleCollapseAll}
                   className="sidebar-action-btn"
+                  icon={<ShrinkOutlined />}
                   title="全部收起"
-                >
-                  <div className="collapse-icon">
-                    <CaretDownOutlined />
-                    <CaretUpOutlined />
-                  </div>
-                </Button>
+                />
                 <Button
                   type="text"
                   size="small"
                   onClick={handleLocateCurrent}
                   className="sidebar-action-btn"
-                  icon={<EnvironmentOutlined />}
+                  icon={<CompassOutlined />}
                   title="定位当前"
                   disabled={!selectedNode}
                 />
@@ -380,6 +396,7 @@ function KnowledgeBasePanel({ visible, onClose }) {
                 <div
                   className="sidebar-toggle-btn"
                   onClick={toggleSidebar}
+                  onMouseDown={(e) => e.stopPropagation()}
                   title="收起侧边栏"
                 >
                   <CaretLeftFilled />

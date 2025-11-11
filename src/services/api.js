@@ -137,4 +137,9 @@ export const tradeAPI = {
   placeOrder: (data) => api.post('/trades/order', data),
 }
 
+export const tradingCalendarAPI = {
+  // 获取指定年份的交易日历
+  getTradingCalendarByYear: (year) => api.get(`/trading-calendar/year/${year}`),
+}
+
 export default api

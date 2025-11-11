@@ -1,6 +1,6 @@
 import { forwardRef, useImperativeHandle, useState, useEffect, useRef } from 'react'
 import { Tree } from 'antd'
-import { BookOutlined } from '@ant-design/icons'
+import { BookOutlined, FileTextOutlined } from '@ant-design/icons'
 import './KnowledgeBaseTree.css'
 
 // 递归转换配置数据为 Tree 组件需要的格式
@@ -8,7 +8,7 @@ const convertToTreeData = (data) => {
   return data.map((item) => ({
     key: item.id,
     title: item.title,
-    icon: <BookOutlined />,
+    icon: item.children && item.children.length > 0 ? <BookOutlined /> : <FileTextOutlined />,
     url: item.url,
     id: item.id,
     children: item.children ? convertToTreeData(item.children) : undefined,

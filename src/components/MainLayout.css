@@ -122,24 +122,20 @@
 
 /* 知识库按钮样式 */
 .knowledge-base-btn {
-  margin-right: 4px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
-  color: #1890ff;
-  position: relative;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  color: #1d1d1f;
 }
 
 .knowledge-base-btn:hover {
-  background: rgba(24, 144, 255, 0.08);
-  transform: translateY(-1px);
-}
-
-.knowledge-base-btn:active {
-  transform: translateY(0);
+  background: rgba(0, 0, 0, 0.04);
+  color: #1976d2;
 }
 
 /* 全屏按钮样式 */
