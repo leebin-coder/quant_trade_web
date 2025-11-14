@@ -124,6 +124,11 @@ function Quotes() {
           volume: parseFloat(item.volume),
         }))
 
+        console.log('K线数据加载成功:', {
+          count: newData.length,
+          sample: newData.slice(0, 2),
+        })
+
         if (isLoadMore) {
           const mergedData = [...newData, ...allDataRef.current]
           allDataRef.current = mergedData
@@ -137,6 +142,7 @@ function Quotes() {
           earliestDateRef.current = newData[0].time
         }
       } else {
+        console.log('查询结果为空:', response)
         if (!isLoadMore) {
           message.info('暂无数据')
           setChartData([])

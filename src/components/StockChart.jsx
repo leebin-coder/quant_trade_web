@@ -73,7 +73,6 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
           borderDownColor: '#14b143',
           wickUpColor: '#ef232a',
           wickDownColor: '#14b143',
-          priceScaleId: 'right',
         })
 
         // 添加成交量系列（柱状图）
@@ -81,24 +80,24 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
           priceFormat: {
             type: 'volume',
           },
-          priceScaleId: 'volume',
           scaleMargins: {
-            top: 0.75, // 成交量图从75%高度开始
+            top: 0.8, // 成交量图从80%高度开始
             bottom: 0,
           },
         })
 
-        // 配置价格刻度
-        chart.priceScale('right').applyOptions({
+        // 配置K线价格刻度
+        candlestickSeries.priceScale().applyOptions({
           scaleMargins: {
             top: 0.1,
-            bottom: 0.3, // 为成交量图留出空间
+            bottom: 0.25, // 为成交量图留出空间
           },
         })
 
-        chart.priceScale('volume').applyOptions({
+        // 配置成交量价格刻度
+        volumeSeries.priceScale().applyOptions({
           scaleMargins: {
-            top: 0.75,
+            top: 0.8,
             bottom: 0,
           },
         })
@@ -156,10 +155,13 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
   // 更新数据
   useEffect(() => {
     if (!isChartReady || !candlestickSeriesRef.current || !volumeSeriesRef.current || !data || data.length === 0) {
+      console.log('图表未就绪或无数据:', { isChartReady, hasData: data?.length > 0 })
       return
     }
 
     try {
+      console.log('开始设置图表数据:', data.length, '条')
+
       // 设置K线数据
       const candlestickData = data.map(item => ({
         time: item.time,
@@ -176,6 +178,9 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
         color: item.close >= item.open ? 'rgba(239, 35, 42, 0.5)' : 'rgba(20, 177, 67, 0.5)',
       }))
 
+      console.log('K线数据样本:', candlestickData.slice(0, 2))
+      console.log('成交量数据样本:', volumeData.slice(0, 2))
+
       candlestickSeriesRef.current.setData(candlestickData)
       volumeSeriesRef.current.setData(volumeData)
 
@@ -183,6 +188,8 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
       if (chartRef.current) {
         chartRef.current.timeScale().fitContent()
       }
+
+      console.log('图表数据设置完成')
     } catch (error) {
       console.error('Failed to set chart data:', error)
     }
