@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createChart } from 'lightweight-charts'
+import { createChart, CandlestickSeries, HistogramSeries } from 'lightweight-charts'
 
 /**
  * TradingView Lightweight Charts - K线图 + 成交量图组件
@@ -66,7 +66,7 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
         const candlestickHeight = Math.floor(height * 0.7)
 
         // 添加K线系列
-        const candlestickSeries = chart.addCandlestickSeries({
+        const candlestickSeries = chart.addSeries(CandlestickSeries, {
           upColor: '#ef232a',
           downColor: '#14b143',
           borderUpColor: '#ef232a',
@@ -76,7 +76,7 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
         })
 
         // 添加成交量系列（柱状图）
-        const volumeSeries = chart.addHistogramSeries({
+        const volumeSeries = chart.addSeries(HistogramSeries, {
           priceFormat: {
             type: 'volume',
           },
