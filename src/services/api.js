@@ -142,4 +142,9 @@ export const tradingCalendarAPI = {
   getTradingCalendarByYear: (year) => api.get(`/trading-calendar/year/${year}`),
 }
 
+export const stockDailyAPI = {
+  // 查询股票日线数据
+  queryStockDaily: (params) => api.post('/stock-daily/query', params),
+}
+
 export default api

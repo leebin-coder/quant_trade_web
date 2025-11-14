@@ -1,7 +1,9 @@
-import { useState } from 'react'
-import { Tabs, Tag } from 'antd'
+import { useState, useEffect, useRef } from 'react'
+import { Tabs, Tag, Spin, message } from 'antd'
 import { CloseOutlined } from '@ant-design/icons'
 import MarketSelector from '../components/MarketSelector'
+import StockChart from '../components/StockChart'
+import { stockDailyAPI } from '../services/api'
 import './Quotes.css'
 
 function Quotes() {
@@ -10,6 +12,13 @@ function Quotes() {
   const [draggedIndex, setDraggedIndex] = useState(null)
   const [draggedOverIndex, setDraggedOverIndex] = useState(null)
   const [justDroppedIndex, setJustDroppedIndex] = useState(null)
+
+  // K线图相关状态
+  const [chartData, setChartData] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const allDataRef = useRef([])
+  const earliestDateRef = useRef(null)
 
   const tabItems = [
     { key: 'trading', label: '交易数据' },
@@ -70,6 +79,102 @@ function Quotes() {
     setDraggedOverIndex(null)
   }
 
+  // 查询日线数据（默认查询一年）
+  const fetchStockDaily = async (stockCode, isLoadMore = false) => {
+    if (!stockCode) return
+
+    if (isLoadMore) {
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+    }
+
+    try {
+      // 计算日期范围
+      let endDate, startDate
+      if (isLoadMore && earliestDateRef.current) {
+        // 加载更多：从最早日期往前推一年
+        endDate = earliestDateRef.current
+        const earliestDateObj = new Date(earliestDateRef.current)
+        earliestDateObj.setFullYear(earliestDateObj.getFullYear() - 1)
+        startDate = earliestDateObj.toISOString().split('T')[0]
+      } else {
+        // 初次加载：默认查询一年
+        const today = new Date()
+        endDate = today.toISOString().split('T')[0]
+        const oneYearAgo = new Date(today)
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+        startDate = oneYearAgo.toISOString().split('T')[0]
+      }
+
+      const response = await stockDailyAPI.queryStockDaily({
+        stockCode: stockCode,
+        startDate: startDate,
+        endDate: endDate,
+        sortOrder: 'asc',
+      })
+
+      if (response.code === 200 && response.data && response.data.length > 0) {
+        const newData = response.data.map(item => ({
+          time: item.tradeDate,
+          open: parseFloat(item.openPrice),
+          high: parseFloat(item.highPrice),
+          low: parseFloat(item.lowPrice),
+          close: parseFloat(item.closePrice),
+          volume: parseFloat(item.volume),
+        }))
+
+        if (isLoadMore) {
+          const mergedData = [...newData, ...allDataRef.current]
+          allDataRef.current = mergedData
+          setChartData(mergedData)
+        } else {
+          allDataRef.current = newData
+          setChartData(newData)
+        }
+
+        if (newData.length > 0) {
+          earliestDateRef.current = newData[0].time
+        }
+      } else {
+        if (!isLoadMore) {
+          message.info('暂无数据')
+          setChartData([])
+        }
+      }
+    } catch (error) {
+      console.error('查询日线数据失败:', error)
+      if (!isLoadMore) {
+        message.error('查询失败，请稍后重试')
+      }
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }
+
+  // 加载更多历史数据
+  const handleLoadMore = async () => {
+    if (!selectedStockCode || loadingMore) return Promise.resolve()
+    return fetchStockDaily(selectedStockCode, true)
+  }
+
+  // 当选中股票改变时，加载数据
+  useEffect(() => {
+    if (selectedStockCode) {
+      allDataRef.current = []
+      earliestDateRef.current = null
+      setChartData([])
+      fetchStockDaily(selectedStockCode, false)
+    }
+  }, [selectedStockCode])
+
+  // 获取选中股票的名称
+  const getSelectedStockName = () => {
+    const stock = marketSelector.selectedStocks.find(s => s.stockCode === selectedStockCode)
+    return stock ? stock.stockName : ''
+  }
+
   return (
     <div className="quotes-container">
       {/* Tab Bar - 顶部居中 */}
@@ -84,9 +189,43 @@ function Quotes() {
             label: item.label,
             children: (
               <div className="tab-content">
-                <div className="tab-content-placeholder">
-                  {item.label}
-                </div>
+                {item.key === 'trading' ? (
+                  // 交易数据Tab - 显示K线图
+                  selectedStockCode ? (
+                    <Spin spinning={loading} tip="加载中...">
+                      {chartData.length > 0 ? (
+                        <div style={{ padding: '20px' }}>
+                          <StockChart
+                            data={chartData}
+                            height={600}
+                            title={`${selectedStockCode} - ${getSelectedStockName()}`}
+                            onLoadMore={handleLoadMore}
+                          />
+                          {loadingMore && (
+                            <div style={{ textAlign: 'center', marginTop: '10px', color: '#1890ff' }}>
+                              正在加载更多历史数据...
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        !loading && (
+                          <div style={{ textAlign: 'center', padding: '100px 40px', color: '#999', fontSize: '16px' }}>
+                            暂无数据
+                          </div>
+                        )
+                      )}
+                    </Spin>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '100px 40px', color: '#999', fontSize: '16px' }}>
+                      请点击左侧股票标签查看K线图
+                    </div>
+                  )
+                ) : (
+                  // 其他Tab - 显示占位符
+                  <div className="tab-content-placeholder">
+                    {item.label}
+                  </div>
+                )}
               </div>
             ),
           }))}

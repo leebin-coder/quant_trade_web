@@ -31,11 +31,6 @@ const menuItems = [
     label: '市场行情',
   },
   {
-    key: '/market',
-    icon: <LineChartOutlined />,
-    label: '行情监控',
-  },
-  {
     key: '/strategy',
     icon: <AppstoreOutlined />,
     label: '策略管理',
