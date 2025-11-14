@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createChart, CandlestickSeries, HistogramSeries } from 'lightweight-charts'
+import { createChart } from 'lightweight-charts'
 
 /**
  * TradingView Lightweight Charts - K线图 + 成交量图组件
@@ -43,9 +43,6 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
           crosshair: {
             mode: 1,
           },
-          rightPriceScale: {
-            borderColor: '#d1d4dc',
-          },
           timeScale: {
             borderColor: '#d1d4dc',
             timeVisible: true,
@@ -62,42 +59,38 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
           },
         })
 
-        // K线图高度占70%
-        const candlestickHeight = Math.floor(height * 0.7)
-
-        // 添加K线系列
-        const candlestickSeries = chart.addSeries(CandlestickSeries, {
+        // 添加K线系列 - 占用上半部分
+        const candlestickSeries = chart.addCandlestickSeries({
           upColor: '#ef232a',
           downColor: '#14b143',
           borderUpColor: '#ef232a',
           borderDownColor: '#14b143',
           wickUpColor: '#ef232a',
           wickDownColor: '#14b143',
+          priceScaleId: 'right',
         })
 
-        // 添加成交量系列（柱状图）
-        const volumeSeries = chart.addSeries(HistogramSeries, {
-          priceFormat: {
-            type: 'volume',
-          },
-          scaleMargins: {
-            top: 0.8, // 成交量图从80%高度开始
-            bottom: 0,
-          },
-        })
-
-        // 配置K线价格刻度
+        // 设置K线图占用上70%空间
         candlestickSeries.priceScale().applyOptions({
           scaleMargins: {
             top: 0.1,
-            bottom: 0.25, // 为成交量图留出空间
+            bottom: 0.35,
           },
         })
 
-        // 配置成交量价格刻度
+        // 添加成交量系列 - 占用下半部分
+        const volumeSeries = chart.addHistogramSeries({
+          color: '#26a69a',
+          priceFormat: {
+            type: 'volume',
+          },
+          priceScaleId: 'volume',
+        })
+
+        // 设置成交量图占用下30%空间
         volumeSeries.priceScale().applyOptions({
           scaleMargins: {
-            top: 0.8,
+            top: 0.75,
             bottom: 0,
           },
         })
@@ -106,6 +99,8 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
         candlestickSeriesRef.current = candlestickSeries
         volumeSeriesRef.current = volumeSeries
         setIsChartReady(true)
+
+        console.log('图表初始化完成')
 
         // 监听时间轴可见范围变化（用于左拉加载更多）
         chart.timeScale().subscribeVisibleLogicalRangeChange((logicalRange) => {
