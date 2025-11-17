@@ -53,7 +53,7 @@ const MarketSelector = () => {
       return [] // 全部市场不传交易所参数
     }
     if (level2 === 'A股') {
-      return ['SH', 'SZ', 'BJ']
+      return ['SSE', 'SZSE', 'BSE']
     }
     return []
   }
@@ -61,9 +61,9 @@ const MarketSelector = () => {
   // 获取交易所颜色
   const getExchangeColor = (exchange) => {
     const colors = {
-      'SH': '#e74c3c',  // 上海 - 红色
-      'SZ': '#3498db',  // 深圳 - 蓝色
-      'BJ': '#f39c12',  // 北京 - 橙色
+      'SSE': '#e74c3c',  // 上海 - 红色
+      'SZSE': '#3498db',  // 深圳 - 蓝色
+      'BSE': '#f39c12',  // 北京 - 橙色
     }
     return colors[exchange] || '#95a5a6'
   }

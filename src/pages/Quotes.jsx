@@ -16,9 +16,7 @@ function Quotes() {
   // K线图相关状态
   const [chartData, setChartData] = useState([])
   const [loading, setLoading] = useState(false)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const allDataRef = useRef([])
-  const earliestDateRef = useRef(null)
+  const allDataRef = useRef([]) // 存储所有历史数据
 
   const tabItems = [
     { key: 'trading', label: '交易数据' },
@@ -79,111 +77,90 @@ function Quotes() {
     setDraggedOverIndex(null)
   }
 
-  // 查询日线数据（初次加载只查询一年）
-  const fetchStockDaily = async (stockCode, isLoadMore = false) => {
+  // 查询所有历史日线数据（5年5年查询直到所有数据加载完）
+  const fetchAllStockDaily = async (stockCode) => {
     if (!stockCode) return
 
-    if (isLoadMore) {
-      setLoadingMore(true)
-    } else {
-      setLoading(true)
-    }
+    setLoading(true)
+    let allData = []
 
     try {
-      // 计算日期范围
-      let endDate, startDate
-      if (isLoadMore && earliestDateRef.current) {
-        // 加载更多：从最早日期往前推一年
-        const earliestDateObj = new Date(earliestDateRef.current)
-        endDate = new Date(earliestDateObj)
-        endDate.setDate(endDate.getDate() - 1) // 结束日期是最早日期的前一天
-        endDate = endDate.toISOString().split('T')[0]
+      const today = new Date()
+      const endDate = today.toISOString().split('T')[0]
 
-        earliestDateObj.setFullYear(earliestDateObj.getFullYear() - 1)
-        startDate = earliestDateObj.toISOString().split('T')[0]
-      } else {
-        // 初次加载：默认查询一年
-        const today = new Date()
-        endDate = today.toISOString().split('T')[0]
-        const oneYearAgo = new Date(today)
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
-        startDate = oneYearAgo.toISOString().split('T')[0]
-      }
+      // 从1990年开始查询（假设最早的股票数据）
+      let currentEndDate = endDate
+      let currentStartYear = today.getFullYear() - 5
+      let hasMoreData = true
 
-      console.log(`${isLoadMore ? '加载更多' : '初次加载'}日线数据:`, { stockCode, startDate, endDate })
+      console.log('开始加载所有历史数据...')
 
-      const response = await stockDailyAPI.queryStockDaily({
-        stockCode: stockCode,
-        startDate: startDate,
-        endDate: endDate,
-        sortOrder: 'asc',
-      })
+      while (hasMoreData && currentStartYear >= 1990) {
+        const currentStartDate = `${currentStartYear}-01-01`
 
-      if (response.code === 200 && response.data && response.data.length > 0) {
-        const newData = response.data.map(item => ({
-          time: item.tradeDate,
-          open: parseFloat(item.openPrice),
-          high: parseFloat(item.highPrice),
-          low: parseFloat(item.lowPrice),
-          close: parseFloat(item.closePrice),
-          volume: parseFloat(item.volume),
-        }))
+        console.log(`查询数据段: ${currentStartDate} ~ ${currentEndDate}`)
 
-        console.log('K线数据加载成功:', {
-          isLoadMore,
-          count: newData.length,
-          dateRange: `${newData[0]?.time} ~ ${newData[newData.length - 1]?.time}`,
+        const response = await stockDailyAPI.queryStockDaily({
+          stockCode: stockCode,
+          startDate: currentStartDate,
+          endDate: currentEndDate,
+          sortOrder: 'asc',
         })
 
-        if (isLoadMore) {
-          // 加载更多：将新数据插入到前面
-          const mergedData = [...newData, ...allDataRef.current]
-          allDataRef.current = mergedData
-          setChartData(mergedData)
-          console.log('合并后总数据量:', mergedData.length)
-        } else {
-          // 初次加载
-          allDataRef.current = newData
-          setChartData(newData)
-        }
+        if (response.code === 200 && response.data && response.data.length > 0) {
+          const newData = response.data.map(item => {
+            const dateOnly = item.tradeDate.split(' ')[0]
+            return {
+              time: dateOnly,
+              open: parseFloat(item.openPrice),
+              high: parseFloat(item.highPrice),
+              low: parseFloat(item.lowPrice),
+              close: parseFloat(item.closePrice),
+              volume: parseFloat(item.volume),
+            }
+          })
 
-        // 更新最早日期
-        if (newData.length > 0) {
-          earliestDateRef.current = newData[0].time
-        }
-      } else {
-        console.log('查询结果为空:', response)
-        if (!isLoadMore) {
-          message.info('暂无数据')
-          setChartData([])
+          // 将新数据插入到前面
+          allData = [...newData, ...allData]
+          console.log(`加载了 ${newData.length} 条数据，总计: ${allData.length} 条`)
+
+          // 准备下一次查询
+          currentEndDate = new Date(newData[0].time)
+          currentEndDate.setDate(currentEndDate.getDate() - 1)
+          currentEndDate = currentEndDate.toISOString().split('T')[0]
+          currentStartYear -= 5
         } else {
-          message.info('没有更多历史数据了')
+          // 没有更多数据了
+          hasMoreData = false
+          console.log('已加载所有历史数据')
         }
+      }
+
+      if (allData.length > 0) {
+        allDataRef.current = allData
+        setChartData(allData)
+        console.log('所有历史数据加载完成:', {
+          总数据量: allData.length,
+          日期范围: `${allData[0]?.time} ~ ${allData[allData.length - 1]?.time}`,
+        })
+      } else {
+        message.info('暂无数据')
+        setChartData([])
       }
     } catch (error) {
       console.error('查询日线数据失败:', error)
-      if (!isLoadMore) {
-        message.error('查询失败，请稍后重试')
-      }
+      message.error('查询失败，请稍后重试')
     } finally {
       setLoading(false)
-      setLoadingMore(false)
     }
   }
 
-  // 加载更多历史数据
-  const handleLoadMore = async () => {
-    if (!selectedStockCode || loadingMore) return Promise.resolve()
-    return fetchStockDaily(selectedStockCode, true)
-  }
-
-  // 当选中股票改变时，加载数据
+  // 当选中股票改变时，加载所有数据
   useEffect(() => {
     if (selectedStockCode) {
       allDataRef.current = []
-      earliestDateRef.current = null
       setChartData([])
-      fetchStockDaily(selectedStockCode, false)
+      fetchAllStockDaily(selectedStockCode)
     }
   }, [selectedStockCode])
 
@@ -212,18 +189,18 @@ function Quotes() {
                   selectedStockCode ? (
                     <Spin spinning={loading} tip="加载中...">
                       {chartData.length > 0 ? (
-                        <div style={{ padding: '20px' }}>
-                          <StockChart
-                            data={chartData}
-                            height={600}
-                            title={`${selectedStockCode} - ${getSelectedStockName()}`}
-                            onLoadMore={handleLoadMore}
-                          />
-                          {loadingMore && (
-                            <div style={{ textAlign: 'center', marginTop: '10px', color: '#1890ff' }}>
-                              正在加载更多历史数据...
-                            </div>
-                          )}
+                        <div style={{
+                          padding: '20px',
+                          paddingLeft: '84px',  // 左侧边距减小到原来的30% (280px * 0.3 = 84px)
+                          paddingRight: '40px',
+                        }}>
+                          <div style={{ width: '100%' }}>
+                            <StockChart
+                              data={chartData}
+                              height={600}
+                              title={`${getSelectedStockName()} ${selectedStockCode}`}
+                            />
+                          </div>
                         </div>
                       ) : (
                         !loading && (
