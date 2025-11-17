@@ -79,7 +79,7 @@ function Quotes() {
     setDraggedOverIndex(null)
   }
 
-  // 查询日线数据（默认查询一年）
+  // 查询日线数据（初次加载只查询一年）
   const fetchStockDaily = async (stockCode, isLoadMore = false) => {
     if (!stockCode) return
 
@@ -94,8 +94,11 @@ function Quotes() {
       let endDate, startDate
       if (isLoadMore && earliestDateRef.current) {
         // 加载更多：从最早日期往前推一年
-        endDate = earliestDateRef.current
         const earliestDateObj = new Date(earliestDateRef.current)
+        endDate = new Date(earliestDateObj)
+        endDate.setDate(endDate.getDate() - 1) // 结束日期是最早日期的前一天
+        endDate = endDate.toISOString().split('T')[0]
+
         earliestDateObj.setFullYear(earliestDateObj.getFullYear() - 1)
         startDate = earliestDateObj.toISOString().split('T')[0]
       } else {
@@ -106,6 +109,8 @@ function Quotes() {
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
         startDate = oneYearAgo.toISOString().split('T')[0]
       }
+
+      console.log(`${isLoadMore ? '加载更多' : '初次加载'}日线数据:`, { stockCode, startDate, endDate })
 
       const response = await stockDailyAPI.queryStockDaily({
         stockCode: stockCode,
@@ -125,19 +130,24 @@ function Quotes() {
         }))
 
         console.log('K线数据加载成功:', {
+          isLoadMore,
           count: newData.length,
-          sample: newData.slice(0, 2),
+          dateRange: `${newData[0]?.time} ~ ${newData[newData.length - 1]?.time}`,
         })
 
         if (isLoadMore) {
+          // 加载更多：将新数据插入到前面
           const mergedData = [...newData, ...allDataRef.current]
           allDataRef.current = mergedData
           setChartData(mergedData)
+          console.log('合并后总数据量:', mergedData.length)
         } else {
+          // 初次加载
           allDataRef.current = newData
           setChartData(newData)
         }
 
+        // 更新最早日期
         if (newData.length > 0) {
           earliestDateRef.current = newData[0].time
         }
@@ -146,6 +156,8 @@ function Quotes() {
         if (!isLoadMore) {
           message.info('暂无数据')
           setChartData([])
+        } else {
+          message.info('没有更多历史数据了')
         }
       }
     } catch (error) {
