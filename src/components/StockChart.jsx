@@ -28,12 +28,12 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
       try {
         const containerWidth = chartContainerRef.current.clientWidth || 800
 
-        // 创建图表
+        // 创建图表 (v3.8 API)
         const chart = createChart(chartContainerRef.current, {
           width: containerWidth,
           height: height,
           layout: {
-            background: { color: '#ffffff' },
+            backgroundColor: '#ffffff',
             textColor: '#333',
           },
           grid: {
@@ -42,6 +42,9 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
           },
           crosshair: {
             mode: 1,
+          },
+          rightPriceScale: {
+            borderColor: '#d1d4dc',
           },
           timeScale: {
             borderColor: '#d1d4dc',
@@ -55,11 +58,10 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
           },
           localization: {
             locale: 'zh-CN',
-            dateFormat: 'yyyy-MM-dd',
           },
         })
 
-        // 添加K线系列 - 占用上半部分
+        // 添加K线系列 (v3.8 API)
         const candlestickSeries = chart.addCandlestickSeries({
           upColor: '#ef232a',
           downColor: '#14b143',
@@ -67,30 +69,29 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
           borderDownColor: '#14b143',
           wickUpColor: '#ef232a',
           wickDownColor: '#14b143',
+        })
+
+        // 设置K线价格刻度 - 占用上70%
+        candlestickSeries.applyOptions({
           priceScaleId: 'right',
         })
 
-        // 设置K线图占用上70%空间
-        candlestickSeries.priceScale().applyOptions({
+        chart.priceScale('right').applyOptions({
           scaleMargins: {
             top: 0.1,
-            bottom: 0.35,
+            bottom: 0.32,
           },
         })
 
-        // 添加成交量系列 - 占用下半部分
+        // 添加成交量系列 (v3.8 API)
         const volumeSeries = chart.addHistogramSeries({
           color: '#26a69a',
           priceFormat: {
             type: 'volume',
           },
           priceScaleId: 'volume',
-        })
-
-        // 设置成交量图占用下30%空间
-        volumeSeries.priceScale().applyOptions({
           scaleMargins: {
-            top: 0.75,
+            top: 0.7,
             bottom: 0,
           },
         })
@@ -100,14 +101,15 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
         volumeSeriesRef.current = volumeSeries
         setIsChartReady(true)
 
-        console.log('图表初始化完成')
+        console.log('TradingView图表初始化完成')
 
         // 监听时间轴可见范围变化（用于左拉加载更多）
         chart.timeScale().subscribeVisibleLogicalRangeChange((logicalRange) => {
           if (!logicalRange || !onLoadMore || isLoadingRef.current) return
 
-          // 当滚动到左边界附近时（前10个K线），触发加载更多
+          // 当滚动到左边界附近时，触发加载更多
           if (logicalRange.from < 10) {
+            console.log('触发加载更多历史数据')
             isLoadingRef.current = true
             onLoadMore().finally(() => {
               isLoadingRef.current = false
@@ -118,9 +120,7 @@ function StockChart({ data = [], height = 600, title = '', onLoadMore }) {
         // 响应式处理
         handleResize = () => {
           if (chartContainerRef.current && chartRef.current) {
-            chartRef.current.applyOptions({
-              width: chartContainerRef.current.clientWidth || 800,
-            })
+            chartRef.current.resize(chartContainerRef.current.clientWidth || 800, height)
           }
         }
 
