@@ -187,29 +187,35 @@ function Quotes() {
                 {item.key === 'trading' ? (
                   // 交易数据Tab - 显示K线图
                   selectedStockCode ? (
-                    <Spin spinning={loading} tip="加载中...">
+                    <div style={{ position: 'relative', minHeight: '600px' }}>
+                      <Spin
+                        spinning={loading}
+                        tip="加载中..."
+                        style={{
+                          position: 'absolute',
+                          top: '100px',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                        }}
+                      >
+                        <div />
+                      </Spin>
                       {chartData.length > 0 ? (
-                        <div style={{
-                          padding: '20px',
-                          paddingLeft: '84px',  // 左侧边距减小到原来的30% (280px * 0.3 = 84px)
-                          paddingRight: '40px',
-                        }}>
-                          <div style={{ width: '100%' }}>
-                            <StockChart
-                              data={chartData}
-                              height={600}
-                              title={`${getSelectedStockName()} ${selectedStockCode}`}
-                            />
-                          </div>
+                        <div style={{ padding: '20px' }}>
+                          <StockChart
+                            data={chartData}
+                            height={600}
+                            title={`${getSelectedStockName()} ${selectedStockCode}`}
+                          />
                         </div>
                       ) : (
                         !loading && (
-                          <div style={{ textAlign: 'center', padding: '100px 40px', color: '#999', fontSize: '16px' }}>
+                          <div style={{ textAlign: 'center', padding: '100px 40px', color: '#ffffff', fontSize: '16px' }}>
                             暂无数据
                           </div>
                         )
                       )}
-                    </Spin>
+                    </div>
                   ) : (
                     <div style={{ textAlign: 'center', padding: '100px 40px', color: '#999', fontSize: '16px' }}>
                       请点击左侧股票标签查看K线图

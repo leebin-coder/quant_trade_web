@@ -222,9 +222,7 @@ const MarketSelector = () => {
               <InfoCircleOutlined className="notice-icon" />
               <div className="notice-marquee">
                   <div className="marquee-content">
-                      Developer funds are limited, and the current version only processes A-share data. If you want
-                      better data services, please scan the QR code on the right to contact me or donate to me, and I
-                      will consider your needs as soon as possible
+                      测试版目前只支持A股
                   </div>
               </div>
               <Button

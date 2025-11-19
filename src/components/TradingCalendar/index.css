@@ -7,13 +7,13 @@
   cursor: pointer;
   border-radius: 8px;
   transition: all 0.2s;
-  color: #1d1d1f;
+  color: #ffffff;
   font-size: 18px;
 }
 
 .trading-calendar-icon:hover {
-  background: rgba(0, 0, 0, 0.04);
-  color: #1976d2;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
 }
 
 .trading-calendar-popover .ant-popover-inner {

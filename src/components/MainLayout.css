@@ -120,6 +120,56 @@
   background: rgba(0, 0, 0, 0.15);
 }
 
+/* 顶部菜单按钮样式 */
+.top-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.top-menu-btn::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #4a7bc9 0%, #8b5fa8 33%, #c94a7b 66%, #e89e4a 100%);
+  transform: translateX(-50%);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.top-menu-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.top-menu-btn.active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.top-menu-btn.active::before {
+  width: 100%;
+}
+
+.top-menu-btn span {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.top-menu-btn:hover span {
+  transform: translateY(-1px);
+}
+
 /* 知识库按钮样式 */
 .knowledge-base-btn {
   width: 36px;
@@ -130,12 +180,12 @@
   cursor: pointer;
   border-radius: 8px;
   transition: all 0.2s;
-  color: #1d1d1f;
+  color: #ffffff;
 }
 
 .knowledge-base-btn:hover {
-  background: rgba(0, 0, 0, 0.04);
-  color: #1976d2;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
 }
 
 /* 全屏按钮样式 */
@@ -147,11 +197,12 @@
   cursor: pointer;
   display: flex;
   align-items: center;
-  color: #1d1d1f;
+  color: #ffffff;
 }
 
 .fullscreen-btn:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
 }
 
 /* 全屏提示 */
