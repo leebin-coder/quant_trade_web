@@ -1,23 +1,31 @@
 import { useState, useEffect, useRef } from 'react'
-import { Tabs, Tag, Spin, message } from 'antd'
-import { CloseOutlined } from '@ant-design/icons'
-import MarketSelector from '../components/MarketSelector'
+import { Tabs, Empty } from 'antd'
+import StockSelector from '../components/StockSelector'
 import StockChart from '../components/StockChart'
+import MarketOverview from '../components/MarketOverview'
 import { stockDailyAPI } from '../services/api'
 import './Quotes.css'
 
 function Quotes() {
+  const [mainModule, setMainModule] = useState('stock') // 主模块: overview, stock, sector, capital, sentiment
   const [activeKey, setActiveKey] = useState('trading')
-  const [selectedStockCode, setSelectedStockCode] = useState(null)
-  const [draggedIndex, setDraggedIndex] = useState(null)
-  const [draggedOverIndex, setDraggedOverIndex] = useState(null)
-  const [justDroppedIndex, setJustDroppedIndex] = useState(null)
-
-  // K线图相关状态
+  const [selectedStock, setSelectedStock] = useState(null)
   const [chartData, setChartData] = useState([])
   const [loading, setLoading] = useState(false)
-  const allDataRef = useRef([]) // 存储所有历史数据
+  const [period, setPeriod] = useState('daily') // 时间周期: minute-分时, daily-日线, weekly-周线, monthly-月线, quarterly-季线, yearly-年线
+  const allDataRef = useRef([])
+  const loadingStartTimeRef = useRef(null)
 
+  // 五大模块
+  const mainModules = [
+    { key: 'overview', label: '市场总览' },
+    { key: 'stock', label: '个股' },
+    { key: 'sector', label: '板块' },
+    { key: 'capital', label: '资金' },
+    { key: 'sentiment', label: '市场情绪' },
+  ]
+
+  // 个股模块的六个tab
   const tabItems = [
     { key: 'trading', label: '交易数据' },
     { key: 'technical', label: '派生技术指标' },
@@ -27,54 +35,79 @@ function Quotes() {
     { key: 'future', label: '未来何往' },
   ]
 
-  const marketSelector = MarketSelector()
+  // 聚合日线数据为不同周期
+  const aggregateData = (dailyData, period) => {
+    if (!dailyData || dailyData.length === 0) return []
+    if (period === 'daily') return dailyData
 
-  // 处理股票卡片点击
-  const handleStockCardClick = (stockCode) => {
-    setSelectedStockCode(stockCode)
-  }
+    const result = []
+    let currentGroup = []
+    let currentPeriodKey = null
 
-  // 处理删除股票
-  const handleRemoveStock = (e, stockCode) => {
-    e.stopPropagation() // 阻止冒泡，避免触发选中
-    marketSelector.removeStock(stockCode)
-    if (selectedStockCode === stockCode) {
-      setSelectedStockCode(null)
+    const getPeriodKey = (dateStr) => {
+      const date = new Date(dateStr)
+      const year = date.getFullYear()
+      const month = date.getMonth() + 1
+      const quarter = Math.floor(month / 3) + 1
+
+      switch (period) {
+        case 'weekly':
+          // 获取该日期所在周的周一
+          const day = date.getDay()
+          const diff = date.getDate() - day + (day === 0 ? -6 : 1)
+          const monday = new Date(date.setDate(diff))
+          return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`
+        case 'monthly':
+          return `${year}-${String(month).padStart(2, '0')}`
+        case 'quarterly':
+          return `${year}-Q${quarter}`
+        case 'yearly':
+          return `${year}`
+        default:
+          return dateStr
+      }
     }
-  }
 
-  // 拖拽开始
-  const handleDragStart = (e, index) => {
-    setDraggedIndex(index)
-    e.dataTransfer.effectAllowed = 'move'
-  }
+    dailyData.forEach((item, index) => {
+      const periodKey = getPeriodKey(item.time)
 
-  // 拖拽经过
-  const handleDragOver = (e, index) => {
-    e.preventDefault()
-    setDraggedOverIndex(index)
-  }
+      if (currentPeriodKey !== periodKey) {
+        // 新周期，处理上一个周期的数据
+        if (currentGroup.length > 0) {
+          const aggregated = {
+            time: currentGroup[0].time, // 使用该周期第一天的日期
+            open: currentGroup[0].open,
+            high: Math.max(...currentGroup.map(d => d.high)),
+            low: Math.min(...currentGroup.map(d => d.low)),
+            close: currentGroup[currentGroup.length - 1].close,
+            volume: currentGroup.reduce((sum, d) => sum + d.volume, 0),
+          }
+          result.push(aggregated)
+        }
 
-  // 拖拽结束
-  const handleDrop = (e, dropIndex) => {
-    e.preventDefault()
-    if (draggedIndex === null || draggedIndex === dropIndex) return
+        // 开始新周期
+        currentPeriodKey = periodKey
+        currentGroup = [item]
+      } else {
+        // 同一周期，添加到当前组
+        currentGroup.push(item)
+      }
 
-    const items = [...marketSelector.selectedStocks]
-    const draggedItem = items[draggedIndex]
-    items.splice(draggedIndex, 1)
-    items.splice(dropIndex, 0, draggedItem)
+      // 处理最后一组
+      if (index === dailyData.length - 1 && currentGroup.length > 0) {
+        const aggregated = {
+          time: currentGroup[0].time,
+          open: currentGroup[0].open,
+          high: Math.max(...currentGroup.map(d => d.high)),
+          low: Math.min(...currentGroup.map(d => d.low)),
+          close: currentGroup[currentGroup.length - 1].close,
+          volume: currentGroup.reduce((sum, d) => sum + d.volume, 0),
+        }
+        result.push(aggregated)
+      }
+    })
 
-    // 更新股票列表（需要通过MarketSelector暴露的方法）
-    marketSelector.setSelectedStocks(items)
-    setDraggedIndex(null)
-    setDraggedOverIndex(null)
-  }
-
-  // 拖拽离开
-  const handleDragEnd = () => {
-    setDraggedIndex(null)
-    setDraggedOverIndex(null)
+    return result
   }
 
   // 查询所有历史日线数据（5年5年查询直到所有数据加载完）
@@ -82,6 +115,7 @@ function Quotes() {
     if (!stockCode) return
 
     setLoading(true)
+    loadingStartTimeRef.current = Date.now()
     let allData = []
 
     try {
@@ -93,12 +127,8 @@ function Quotes() {
       let currentStartYear = today.getFullYear() - 5
       let hasMoreData = true
 
-      console.log('开始加载所有历史数据...')
-
       while (hasMoreData && currentStartYear >= 1990) {
         const currentStartDate = `${currentStartYear}-01-01`
-
-        console.log(`查询数据段: ${currentStartDate} ~ ${currentEndDate}`)
 
         const response = await stockDailyAPI.queryStockDaily({
           stockCode: stockCode,
@@ -122,7 +152,6 @@ function Quotes() {
 
           // 将新数据插入到前面
           allData = [...newData, ...allData]
-          console.log(`加载了 ${newData.length} 条数据，总计: ${allData.length} 条`)
 
           // 准备下一次查询
           currentEndDate = new Date(newData[0].time)
@@ -132,147 +161,174 @@ function Quotes() {
         } else {
           // 没有更多数据了
           hasMoreData = false
-          console.log('已加载所有历史数据')
         }
       }
 
       if (allData.length > 0) {
         allDataRef.current = allData
-        setChartData(allData)
-        console.log('所有历史数据加载完成:', {
-          总数据量: allData.length,
-          日期范围: `${allData[0]?.time} ~ ${allData[allData.length - 1]?.time}`,
-        })
+
+        // 计算已经过去的时间
+        const elapsedTime = Date.now() - loadingStartTimeRef.current
+        const remainingTime = Math.max(0, 1800 - elapsedTime)
+
+        // 确保加载动画至少显示1.8秒
+        setTimeout(() => {
+          // 根据当前周期聚合数据
+          const aggregated = aggregateData(allData, period)
+          setChartData(aggregated)
+          setLoading(false)
+        }, remainingTime)
       } else {
-        message.info('暂无数据')
-        setChartData([])
+        // 即使无数据，也要等待1.8秒
+        const elapsedTime = Date.now() - loadingStartTimeRef.current
+        const remainingTime = Math.max(0, 1800 - elapsedTime)
+
+        setTimeout(() => {
+          setChartData([])
+          setLoading(false)
+        }, remainingTime)
       }
     } catch (error) {
       console.error('查询日线数据失败:', error)
-      message.error('查询失败，请稍后重试')
-    } finally {
       setLoading(false)
+    }
+  }
+
+  // 处理股票选择
+  const handleStockSelect = (stock) => {
+    setSelectedStock(stock)
+    setActiveKey('trading') // 切换到交易数据Tab
+  }
+
+  // 处理时间周期变化
+  const handlePeriodChange = (newPeriod) => {
+    setPeriod(newPeriod)
+
+    // 分时数据需要后端支持
+    if (newPeriod === 'minute') {
+      console.log('分时数据需要后端API支持')
+      setChartData([])
+      return
+    }
+
+    // 使用已加载的日线数据进行聚合
+    if (allDataRef.current.length > 0) {
+      const aggregated = aggregateData(allDataRef.current, newPeriod)
+      setChartData(aggregated)
     }
   }
 
   // 当选中股票改变时，加载所有数据
   useEffect(() => {
-    if (selectedStockCode) {
+    if (selectedStock) {
       allDataRef.current = []
       setChartData([])
-      fetchAllStockDaily(selectedStockCode)
+      setPeriod('daily') // 重置为日线
+      fetchAllStockDaily(selectedStock.stockCode)
     }
-  }, [selectedStockCode])
-
-  // 获取选中股票的名称
-  const getSelectedStockName = () => {
-    const stock = marketSelector.selectedStocks.find(s => s.stockCode === selectedStockCode)
-    return stock ? stock.stockName : ''
-  }
+  }, [selectedStock])
 
   return (
     <div className="quotes-container">
-      {/* Tab Bar - 顶部居中 */}
-      <div className="quotes-tabs-wrapper">
-        <Tabs
-          activeKey={activeKey}
-          onChange={setActiveKey}
-          centered
-          className="quotes-tabs"
-          items={tabItems.map(item => ({
-            key: item.key,
-            label: item.label,
-            children: (
-              <div className="tab-content">
-                {item.key === 'trading' ? (
-                  // 交易数据Tab - 显示K线图
-                  selectedStockCode ? (
-                    <div style={{ position: 'relative', minHeight: '600px' }}>
-                      <Spin
-                        spinning={loading}
-                        tip="加载中..."
-                        style={{
-                          position: 'absolute',
-                          top: '100px',
-                          left: '50%',
-                          transform: 'translate(-50%, -50%)',
-                        }}
-                      >
-                        <div />
-                      </Spin>
-                      {chartData.length > 0 ? (
-                        <div style={{ padding: '20px' }}>
-                          <StockChart
-                            data={chartData}
-                            height={600}
-                            title={`${getSelectedStockName()} ${selectedStockCode}`}
-                          />
-                        </div>
-                      ) : (
-                        !loading && (
-                          <div style={{ textAlign: 'center', padding: '100px 40px', color: '#ffffff', fontSize: '16px' }}>
-                            暂无数据
+      {/* 顶部五大模块切换 */}
+      <div className="main-modules">
+        {mainModules.map(module => (
+          <div
+            key={module.key}
+            className={`module-tab ${mainModule === module.key ? 'active' : ''}`}
+            onClick={() => setMainModule(module.key)}
+          >
+            {module.label}
+          </div>
+        ))}
+      </div>
+
+      {/* 模块内容区域 */}
+      <div className="module-content">
+        {mainModule === 'stock' ? (
+          // 个股模块
+          <div className="stock-module">
+            {/* 左侧股票选择器 */}
+            <StockSelector onStockSelect={handleStockSelect} />
+
+            {/* 右侧：Tab Bar + 内容 */}
+            <div className="quotes-tabs-wrapper">
+              <Tabs
+                activeKey={activeKey}
+                onChange={setActiveKey}
+                tabPosition="top"
+                className="quotes-tabs"
+                tabBarStyle={{ textAlign: 'right' }}
+                items={tabItems.map(item => ({
+                  key: item.key,
+                  label: item.label,
+                  children: (
+                    <div className="tab-content">
+                      {item.key === 'trading' ? (
+                        // 交易数据Tab - 显示K线图
+                        selectedStock ? (
+                          loading ? (
+                            // 加载中 - 显示四色渐变文字
+                            <div className="tab-content-placeholder">
+                              <div className="loading-text">{item.label}</div>
+                            </div>
+                          ) : chartData.length > 0 ? (
+                            <StockChart
+                              data={chartData}
+                              height={600}
+                              title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
+                              period={period}
+                              onPeriodChange={handlePeriodChange}
+                            />
+                          ) : (
+                            // 无数据 - 显示Empty组件
+                            <div className="tab-content-placeholder">
+                              <Empty
+                                description="暂无数据"
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                              />
+                            </div>
+                          )
+                        ) : (
+                          // 未选中股票 - 显示Tab文案
+                          <div className="tab-content-placeholder">
+                            {item.label}
                           </div>
                         )
+                      ) : (
+                        // 其他Tab - 显示占位符
+                        <div className="tab-content-placeholder">
+                          {item.label}
+                        </div>
                       )}
                     </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '100px 40px', color: '#999', fontSize: '16px' }}>
-                      请点击左侧股票标签查看K线图
-                    </div>
-                  )
-                ) : (
-                  // 其他Tab - 显示占位符
-                  <div className="tab-content-placeholder">
-                    {item.label}
-                  </div>
-                )}
-              </div>
-            ),
-          }))}
-        />
-      </div>
-
-      {/* 悬浮：股票选择器 */}
-      <div className="floating-selector">
-        {marketSelector.dropdown}
-      </div>
-
-      {/* 悬浮：选中的股票标签列表 */}
-      {marketSelector.selectedStocks.length > 0 && (
-        <div className="floating-stocks-list">
-          {marketSelector.selectedStocks.map((stock, index) => (
-            <div
-              key={stock.stockCode}
-              draggable
-              className={`selected-stock-tag ${selectedStockCode === stock.stockCode ? 'active' : ''} ${stock.trend === 'up' ? 'trend-up' : 'trend-down'} ${draggedIndex === index ? 'dragging' : ''} ${draggedOverIndex === index && draggedIndex !== index ? 'drag-over' : ''}`}
-              style={{ animationDelay: `${index * 0.05}s` }}
-              onClick={() => handleStockCardClick(stock.stockCode)}
-              onDragStart={(e) => handleDragStart(e, index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDrop={(e) => handleDrop(e, index)}
-              onDragEnd={handleDragEnd}
-            >
-              <div className="stock-tag-content">
-                <div className="stock-tag-name">{stock.stockName}</div>
-                <div className="stock-tag-code-row">
-                  <span className="stock-tag-code">{stock.stockCode}</span>
-                  <Tag
-                    color={marketSelector.getExchangeColor(stock.exchange)}
-                    className="stock-tag-exchange"
-                  >
-                    {stock.exchange}
-                  </Tag>
-                </div>
-              </div>
-              <CloseOutlined
-                className="stock-tag-close"
-                onClick={(e) => handleRemoveStock(e, stock.stockCode)}
+                  ),
+                }))}
               />
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ) : mainModule === 'overview' ? (
+          // 市场总览模块
+          <div className="overview-module">
+            <MarketOverview />
+          </div>
+        ) : mainModule === 'sector' ? (
+          // 板块模块
+          <div className="sector-module">
+            <div className="module-placeholder">板块</div>
+          </div>
+        ) : mainModule === 'capital' ? (
+          // 资金模块
+          <div className="capital-module">
+            <div className="module-placeholder">资金</div>
+          </div>
+        ) : mainModule === 'sentiment' ? (
+          // 市场情绪模块
+          <div className="sentiment-module">
+            <div className="module-placeholder">市场情绪</div>
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }

@@ -8,8 +8,10 @@ import { Select, ConfigProvider, Checkbox, Radio } from 'antd'
  * @param {Array} props.data - K线数据 [{time: '2023-01-01', open: 100, high: 110, low: 90, close: 105, volume: 1000000}]
  * @param {Number} props.height - 图表总高度，默认 600
  * @param {String} props.title - 图表标题
+ * @param {String} props.period - 时间周期：minute-分时, daily-日线, weekly-周线, monthly-月线, quarterly-季线, yearly-年线
+ * @param {Function} props.onPeriodChange - 时间周期变化回调
  */
-function StockChart({ data = [], height = 600, title = '' }) {
+function StockChart({ data = [], height = 600, title = '', period = 'daily', onPeriodChange }) {
   const chartContainerRef = useRef(null)
   const volumeChartContainerRef = useRef(null) // 中间成交量图表容器
   const lowerChartContainerRef = useRef(null) // 下方指标图表容器
@@ -57,7 +59,7 @@ function StockChart({ data = [], height = 600, title = '' }) {
         // 创建图表 (v3.8 API)
         const chart = createChart(chartContainerRef.current, {
           width: containerWidth,
-          height: 934,
+          height: 700,
           layout: {
             backgroundColor: 'rgb(28, 28, 28)',
             textColor: '#d1d4dc',
@@ -118,14 +120,14 @@ function StockChart({ data = [], height = 600, title = '' }) {
           priceScaleId: 'right',
         })
 
-        // K线价格刻度设置 - 占用上方55%空间
+        // K线价格刻度设置 - 占用上方60%空间
         // top: 从顶部留白的百分比, bottom: 从底部留白的百分比
         chart.priceScale('right').applyOptions({
           autoScale: true,
           alignLabels: true,
           scaleMargins: {
             top: 0.05,      // 顶部留5%空白，避免被选择器覆盖
-            bottom: 0.46,  // 底部留46%空白 (5% - 54%)
+            bottom: 0.40,   // 底部留40%空白 (5% - 65%)
           },
         })
 
@@ -137,14 +139,14 @@ function StockChart({ data = [], height = 600, title = '' }) {
           priceScaleId: 'volume',  // 独立的价格刻度ID
         })
 
-        // 成交量价格刻度设置 - 占用中间18%空间 (56% - 74%)
+        // 成交量价格刻度设置 - 占用中间15%空间 (66% - 81%)
         chart.priceScale('volume').applyOptions({
           visible: false,  // 隐藏volume的价格刻度
           autoScale: true,
           alignLabels: false,
           scaleMargins: {
-            top: 0.56,     // 顶部留56%空白
-            bottom: 0.26,  // 底部留26%空白 (56% - 74%)
+            top: 0.66,     // 顶部留66%空白
+            bottom: 0.19,  // 底部留19%空白 (66% - 81%)
           },
         })
 
@@ -155,15 +157,15 @@ function StockChart({ data = [], height = 600, title = '' }) {
         })
         lowerPlaceholder.setData([{ time: '2020-01-01', value: 0 }])
 
-        // 技术指标价格刻度设置 - 占用下方25%空间 (74% - 99%)
+        // 技术指标价格刻度设置 - 占用下方12%空间 (86% - 98%)
         chart.priceScale('lower').applyOptions({
           visible: false,  // 隐藏lower的价格刻度
           autoScale: true,
           alignLabels: false,
           mode: 0,  // 正常模式
           scaleMargins: {
-            top: 0.76,     // 顶部留76%空白（在指标区域内部增加上边距）
-            bottom: 0.03,   // 底部留3%空白（在指标区域内部增加下边距）
+            top: 0.86,     // 顶部留86%空白（指标区域从86%开始）
+            bottom: 0.02,   // 底部留2%空白
           },
         })
 
@@ -191,21 +193,15 @@ function StockChart({ data = [], height = 600, title = '' }) {
               timeStr = param.time
             }
 
-            console.log('🔍 查找数据 - timeStr:', timeStr)
-
             // 从最新数据中找到对应的完整数据（包含volume等）
             const fullData = dataRef.current.find(d => d.time === timeStr)
 
             if (fullData) {
-              console.log('✅ 找到数据:', timeStr)
               setSelectedData(fullData)
-            } else {
-              console.log('❌ 未找到数据 - timeStr:', timeStr)
             }
           } else {
             // 鼠标移出图表区域，恢复显示最后点击的数据
             if (lastClickedDataRef.current) {
-              console.log('👈 鼠标移出 - 恢复数据')
               setSelectedData(lastClickedDataRef.current)
             }
           }
@@ -215,7 +211,6 @@ function StockChart({ data = [], height = 600, title = '' }) {
         handleChartClick = () => {
           // 如果当前有悬停的数据，将其设为最后点击的数据
           if (selectedDataRef.current) {
-            console.log('🖱️ 点击锁定数据:', selectedDataRef.current.time)
             lastClickedDataRef.current = selectedDataRef.current
           }
         }
@@ -226,7 +221,7 @@ function StockChart({ data = [], height = 600, title = '' }) {
         handleResize = () => {
           if (chartContainerRef.current && chartRef.current) {
             const newWidth = chartContainerRef.current.clientWidth || 1000
-            chartRef.current.resize(newWidth, 934)
+            chartRef.current.resize(newWidth, 700)
           }
         }
 
@@ -805,12 +800,6 @@ function StockChart({ data = [], height = 600, title = '' }) {
 
       // 应用标记
       candlestickSeriesRef.current.setMarkers(markers)
-
-      console.log('更新最高最低价标记:', {
-        可见范围: `${fromIndex} ~ ${toIndex}`,
-        最高价: maxPrice,
-        最低价: minPrice,
-      })
     } catch (error) {
       console.error('更新最高最低价标记失败:', error)
     }
@@ -831,9 +820,6 @@ function StockChart({ data = [], height = 600, title = '' }) {
         low: item.low,
         close: item.close,
       }))
-
-      console.log('📊 图表数据已加载:', data.length, '条')
-      console.log('   时间格式示例:', data[0]?.time, typeof data[0]?.time)
 
       candlestickSeriesRef.current.setData(candlestickData)
 
@@ -868,8 +854,6 @@ function StockChart({ data = [], height = 600, title = '' }) {
       }))
 
       volumeSeriesRef.current.setData(volumeData)
-
-      console.log('📊 成交量数据已加载')
     } catch (error) {
       console.error('Failed to set volume data:', error)
     }
@@ -903,6 +887,7 @@ function StockChart({ data = [], height = 600, title = '' }) {
       ...selectedData,
       changePercent,
       changeAmount,
+      previousClose, // 添加上一个交易日的收盘价
     }
   }
 
@@ -965,13 +950,6 @@ function StockChart({ data = [], height = 600, title = '' }) {
   }
 
   const lowerIndicatorData = getLowerIndicatorData()
-
-  // 监控selectedData变化
-  useEffect(() => {
-    if (selectedData) {
-      console.log('📈 右侧面板更新 -', selectedData.time, '开:', selectedData.open, '收:', selectedData.close)
-    }
-  }, [selectedData])
 
   // 更新技术指标
   useEffect(() => {
@@ -1237,25 +1215,245 @@ function StockChart({ data = [], height = 600, title = '' }) {
 
   return (
     <div style={{ width: '100%', height: '100%' }}>
-      {/* 标题 */}
+      {/* 标题和控制器行 */}
       {title && (
         <div
           style={{
-            textAlign: 'left',
-            fontSize: '28px',
-            fontWeight: 'bold',
+            display: 'grid',
+            gridTemplateColumns: '1fr 200px',
+            gap: '40px',
+            alignItems: 'center',
             marginBottom: '20px',
-            marginLeft: '84px', // 与图表左侧对齐
-            color: '#ffffff',
+            width: '100%',
+            boxSizing: 'border-box',
           }}
         >
-          {title}
+          {/* 左侧：标题和控制器组 */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0 }}>
+            {/* 标题 */}
+            <div
+              style={{
+                fontSize: '28px',
+                fontWeight: 'bold',
+                color: '#ffffff',
+              }}
+            >
+              {title}
+            </div>
+
+            {/* 控制器组 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* 时间周期选择器 */}
+            <ConfigProvider
+              theme={{
+                components: {
+                  Radio: {
+                    colorPrimary: '#1890ff',
+                    colorPrimaryHover: '#40a9ff',
+                    fontSize: 12,
+                  },
+                },
+              }}
+            >
+              <Radio.Group
+                value={period}
+                onChange={(e) => onPeriodChange && onPeriodChange(e.target.value)}
+                style={{
+                  display: 'flex',
+                  gap: '8px',
+                }}
+              >
+                <Radio.Button
+                  value="minute"
+                  disabled
+                  style={{
+                    margin: 0,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    height: '28px',
+                    lineHeight: '24px',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    color: 'rgba(255, 255, 255, 0.3)',
+                    cursor: 'not-allowed',
+                  }}
+                >
+                  分时
+                </Radio.Button>
+                <Radio.Button
+                  value="daily"
+                  style={{
+                    margin: 0,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    height: '28px',
+                    lineHeight: '24px',
+                    background: period === 'daily' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    border: period === 'daily' ? '1px solid #1890ff' : '1px solid rgba(255, 255, 255, 0.1)',
+                    color: period === 'daily' ? '#1890ff' : 'rgba(255, 255, 255, 0.65)',
+                  }}
+                >
+                  日线
+                </Radio.Button>
+                <Radio.Button
+                  value="weekly"
+                  style={{
+                    margin: 0,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    height: '28px',
+                    lineHeight: '24px',
+                    background: period === 'weekly' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    border: period === 'weekly' ? '1px solid #1890ff' : '1px solid rgba(255, 255, 255, 0.1)',
+                    color: period === 'weekly' ? '#1890ff' : 'rgba(255, 255, 255, 0.65)',
+                  }}
+                >
+                  周线
+                </Radio.Button>
+                <Radio.Button
+                  value="monthly"
+                  style={{
+                    margin: 0,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    height: '28px',
+                    lineHeight: '24px',
+                    background: period === 'monthly' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    border: period === 'monthly' ? '1px solid #1890ff' : '1px solid rgba(255, 255, 255, 0.1)',
+                    color: period === 'monthly' ? '#1890ff' : 'rgba(255, 255, 255, 0.65)',
+                  }}
+                >
+                  月线
+                </Radio.Button>
+                <Radio.Button
+                  value="quarterly"
+                  style={{
+                    margin: 0,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    height: '28px',
+                    lineHeight: '24px',
+                    background: period === 'quarterly' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    border: period === 'quarterly' ? '1px solid #1890ff' : '1px solid rgba(255, 255, 255, 0.1)',
+                    color: period === 'quarterly' ? '#1890ff' : 'rgba(255, 255, 255, 0.65)',
+                  }}
+                >
+                  季线
+                </Radio.Button>
+                <Radio.Button
+                  value="yearly"
+                  style={{
+                    margin: 0,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    height: '28px',
+                    lineHeight: '24px',
+                    background: period === 'yearly' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    border: period === 'yearly' ? '1px solid #1890ff' : '1px solid rgba(255, 255, 255, 0.1)',
+                    color: period === 'yearly' ? '#1890ff' : 'rgba(255, 255, 255, 0.65)',
+                  }}
+                >
+                  年线
+                </Radio.Button>
+              </Radio.Group>
+            </ConfigProvider>
+
+            {/* 复权类型选择器 */}
+            <ConfigProvider
+              theme={{
+                components: {
+                  Radio: {
+                    colorPrimary: '#1890ff',
+                    colorPrimaryHover: '#40a9ff',
+                    fontSize: 12,
+                  },
+                },
+              }}
+            >
+              <Radio.Group
+                value={adjustType}
+                onChange={(e) => setAdjustType(e.target.value)}
+                style={{
+                  display: 'flex',
+                  gap: '8px',
+                }}
+              >
+                <Radio.Button
+                  value="none"
+                  style={{
+                    margin: 0,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    height: '28px',
+                    lineHeight: '24px',
+                    background: adjustType === 'none' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    border: adjustType === 'none' ? '1px solid #1890ff' : '1px solid rgba(255, 255, 255, 0.1)',
+                    color: adjustType === 'none' ? '#1890ff' : 'rgba(255, 255, 255, 0.65)',
+                  }}
+                >
+                  不复权
+                </Radio.Button>
+                <Radio.Button
+                  value="qfq"
+                  style={{
+                    margin: 0,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    height: '28px',
+                    lineHeight: '24px',
+                    background: adjustType === 'qfq' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    border: adjustType === 'qfq' ? '1px solid #1890ff' : '1px solid rgba(255, 255, 255, 0.1)',
+                    color: adjustType === 'qfq' ? '#1890ff' : 'rgba(255, 255, 255, 0.65)',
+                  }}
+                >
+                  前复权
+                </Radio.Button>
+                <Radio.Button
+                  value="hfq"
+                  style={{
+                    margin: 0,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    height: '28px',
+                    lineHeight: '24px',
+                    background: adjustType === 'hfq' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    border: adjustType === 'hfq' ? '1px solid #1890ff' : '1px solid rgba(255, 255, 255, 0.1)',
+                    color: adjustType === 'hfq' ? '#1890ff' : 'rgba(255, 255, 255, 0.65)',
+                  }}
+                >
+                  后复权
+                </Radio.Button>
+              </Radio.Group>
+            </ConfigProvider>
+            </div>
+          </div>
+
+          {/* 右侧占位元素 - 与数据看板对齐 */}
+          <div style={{ width: '200px' }}></div>
         </div>
       )}
 
       {/* 图表和数据看板容器 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '40px', width: '126%', maxWidth: '1960px', margin: '0 auto', paddingLeft: '84px', paddingRight: '40px' }}>
-        {/* 图表区域 - 自适应宽度，从左侧开始 */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '40px', width: '100%', boxSizing: 'border-box' }}>
+        {/* 图表区域 - 自适应宽度 */}
         <div style={{ minWidth: 0, position: 'relative' }}>
           {/* 技术指标选择器 - 左上角 */}
           <div
@@ -1369,7 +1567,7 @@ function StockChart({ data = [], height = 600, title = '' }) {
           <div
             style={{
               position: 'absolute',
-              top: '680px',
+              top: '550px',
               left: '10px',
               zIndex: 10,
               display: 'flex',
@@ -1419,7 +1617,7 @@ function StockChart({ data = [], height = 600, title = '' }) {
                     border: lowerIndicator === 'MACD' ? '1px solid #4CAF50' : '1px solid transparent',
                   }}
                 >
-                  <span style={{ color: '#4CAF50', fontWeight: 500 }}>MACD</span>
+                  <span style={{ color: '#4CAF50', fontWeight: 500 }}>MACD</span>1.
                 </Checkbox>
                 <Checkbox
                   value="RSI"
@@ -1485,51 +1683,13 @@ function StockChart({ data = [], height = 600, title = '' }) {
             </ConfigProvider>
           </div>
 
-          {/* 复权选择下拉框 - 往左调整，不盖住纵坐标 */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '10px',
-              right: '80px',
-              zIndex: 10,
-            }}
-          >
-            <ConfigProvider
-              theme={{
-                components: {
-                  Select: {
-                    optionSelectedBg: '#e6f7ff',
-                    optionSelectedColor: '#1890ff',
-                    controlPaddingHorizontal: 8,
-                    selectorBg: '#e6f7ff',
-                    colorBgContainer: '#e6f7ff',
-                  },
-                },
-              }}
-            >
-              <Select
-                value={adjustType}
-                onChange={setAdjustType}
-                style={{ width: 60 }}
-                size="small"
-                suffixIcon={null}
-                popupMatchSelectWidth={false}
-                options={[
-                  { label: '未复权', value: 'none' },
-                  { label: '前复权', value: 'qfq' },
-                  { label: '后复权', value: 'hfq' },
-                ]}
-              />
-            </ConfigProvider>
-          </div>
-
           {/* K线图 */}
           <div
             ref={chartContainerRef}
             style={{
               position: 'relative',
               width: '100%',
-              height: '934px',
+              height: '700px',
             }}
           />
         </div>
@@ -1544,7 +1704,7 @@ function StockChart({ data = [], height = 600, title = '' }) {
           }}
         >
           {/* 第一块：K线数据 */}
-          <div style={{ paddingTop: '47px' }}>
+          <div style={{ paddingTop: '0px' }}>
             {/* 交易日期 */}
             <div
               style={{
@@ -1563,14 +1723,34 @@ function StockChart({ data = [], height = 600, title = '' }) {
               {/* 开盘价 */}
               <div>
                 <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>开盘价</div>
-                <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff' }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: displayData && displayData.previousClose
+                    ? displayData.open > displayData.previousClose
+                      ? '#ef232a'  // 红色：高于上一交易日收盘价
+                      : displayData.open < displayData.previousClose
+                      ? '#14b143'  // 绿色：低于上一交易日收盘价
+                      : '#ffffff'  // 白色：等于上一交易日收盘价
+                    : '#ffffff'
+                }}>
                   {displayData ? displayData.open.toFixed(2) : '--'}
                 </div>
               </div>
               {/* 收盘价 */}
               <div>
                 <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>收盘价</div>
-                <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff' }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: displayData && displayData.previousClose
+                    ? displayData.close > displayData.previousClose
+                      ? '#ef232a'  // 红色：高于上一交易日收盘价
+                      : displayData.close < displayData.previousClose
+                      ? '#14b143'  // 绿色：低于上一交易日收盘价
+                      : '#ffffff'  // 白色：等于上一交易日收盘价
+                    : '#ffffff'
+                }}>
                   {displayData ? displayData.close.toFixed(2) : '--'}
                 </div>
               </div>
@@ -1578,14 +1758,34 @@ function StockChart({ data = [], height = 600, title = '' }) {
               {/* 最高 */}
               <div>
                 <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>最高</div>
-                <div style={{ fontSize: '14px', fontWeight: '500', color: '#ef232a' }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: displayData && displayData.previousClose
+                    ? displayData.high > displayData.previousClose
+                      ? '#ef232a'  // 红色：高于上一交易日收盘价
+                      : displayData.high < displayData.previousClose
+                      ? '#14b143'  // 绿色：低于上一交易日收盘价
+                      : '#ffffff'  // 白色：等于上一交易日收盘价
+                    : '#ffffff'
+                }}>
                   {displayData ? displayData.high.toFixed(2) : '--'}
                 </div>
               </div>
               {/* 最低 */}
               <div>
                 <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>最低</div>
-                <div style={{ fontSize: '14px', fontWeight: '500', color: '#14b143' }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: displayData && displayData.previousClose
+                    ? displayData.low > displayData.previousClose
+                      ? '#ef232a'  // 红色：高于上一交易日收盘价
+                      : displayData.low < displayData.previousClose
+                      ? '#14b143'  // 绿色：低于上一交易日收盘价
+                      : '#ffffff'  // 白色：等于上一交易日收盘价
+                    : '#ffffff'
+                }}>
                   {displayData ? displayData.low.toFixed(2) : '--'}
                 </div>
               </div>
@@ -1735,14 +1935,14 @@ function StockChart({ data = [], height = 600, title = '' }) {
                 )
               } else if (lowerIndicator === 'MACD') {
                 const macdData = calculateMACD(data, 12, 26, 9)
+                const difVal = macdData.dif[dataIndex]?.value
+                const deaVal = macdData.dea[dataIndex]?.value
                 const macdVal = macdData.macd[dataIndex]?.value
-                const signalVal = macdData.signal[dataIndex]?.value
-                const histVal = macdData.histogram[dataIndex]?.value
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', fontSize: '12px' }}>
-                    <div><span style={{ color: '#2196F3' }}>DIF: {macdVal ? macdVal.toFixed(4) : '--'}</span></div>
-                    <div><span style={{ color: '#FF9800' }}>DEA: {signalVal ? signalVal.toFixed(4) : '--'}</span></div>
-                    <div><span style={{ color: histVal > 0 ? '#ef232a' : '#14b143' }}>MACD: {histVal ? histVal.toFixed(4) : '--'}</span></div>
+                    <div><span style={{ color: '#2196F3' }}>DIF: {difVal !== null && difVal !== undefined ? difVal.toFixed(4) : '--'}</span></div>
+                    <div><span style={{ color: '#FF9800' }}>DEA: {deaVal !== null && deaVal !== undefined ? deaVal.toFixed(4) : '--'}</span></div>
+                    <div><span style={{ color: macdVal !== null && macdVal !== undefined && macdVal > 0 ? '#ef232a' : '#14b143' }}>MACD: {macdVal !== null && macdVal !== undefined ? macdVal.toFixed(4) : '--'}</span></div>
                   </div>
                 )
               } else if (lowerIndicator === 'RSI') {

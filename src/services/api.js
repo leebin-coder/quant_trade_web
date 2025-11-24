@@ -147,4 +147,13 @@ export const stockDailyAPI = {
   queryStockDaily: (params) => api.post('/stock-daily/query', params),
 }
 
+export const stockRelationAPI = {
+  // 获取当前用户关注的股票列表
+  getFollowedStocks: (params) => api.get('/stock-relations/followed-stocks', { params }),
+  // 添加关注
+  followStock: (stockCode) => api.post('/stock-relations/follow', { stockCode }),
+  // 取消关注
+  unfollowStock: (stockCode) => api.delete('/stock-relations/follow', { params: { stockCode } }),
+}
+
 export default api

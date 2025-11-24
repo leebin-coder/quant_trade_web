@@ -124,28 +124,18 @@
 .top-menu-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 8px;
+  gap: 6px;
+  padding: 6px 12px;
+  height: 48px;
+  border-radius: 6px;
   cursor: pointer;
   color: #ffffff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
-}
-
-.top-menu-btn::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #4a7bc9 0%, #8b5fa8 33%, #c94a7b 66%, #e89e4a 100%);
-  transform: translateX(-50%);
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
 }
 
 .top-menu-btn:hover {
@@ -156,10 +146,6 @@
 .top-menu-btn.active {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.1);
-}
-
-.top-menu-btn.active::before {
-  width: 100%;
 }
 
 .top-menu-btn span {

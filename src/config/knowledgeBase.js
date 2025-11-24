@@ -16,7 +16,7 @@ export const knowledgeBaseConfig = [
                         children: [
                             {
                                 id: 'finance_1_1_!',
-                                title: '证券标识体系y',
+                                title: '证券标识体系',
                                 url: "https://www.yuque.com/u32034952/wxggbp/zphqcxgmkyn18ul7?singleDoc#",
                                 children: [
                                     {

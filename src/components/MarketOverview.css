@@ -1,0 +1,355 @@
+.market-overview {
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  overflow-y: auto;
+  background: rgb(8, 8, 8);
+}
+
+/* 标题区域 */
+.overview-header {
+  margin-bottom: 12px;
+}
+
+.overview-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #ffffff;
+  text-align: left; /* 居左 */
+}
+
+/* 外层容器 */
+.dashboard-wrapper {
+  display: flex;
+  gap: 12px;
+  height: calc(100% - 42px);
+}
+
+/* 核心监控仪表盘大卡片 - 占1/2宽度 */
+.dashboard-card {
+  width: 50%;
+  background: rgb(20, 20, 20);
+  border-radius: 8px;
+  border: 1px solid rgba(60, 60, 60, 0.3);
+  padding: 12px;
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* 单个仪表盘区块 - 在大卡片内各占1/2 */
+.dashboard-section {
+  flex: 1;
+  background: rgb(28, 28, 28);
+  border-radius: 6px;
+  border: 1px solid rgba(80, 80, 80, 0.2);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.section-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+/* 脉搏监控块 */
+.pulse-block,
+.flow-block {
+  background: rgb(35, 35, 35);
+  border-radius: 4px;
+  padding: 8px;
+  border: 1px solid rgba(80, 80, 80, 0.2);
+}
+
+.block-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 8px;
+}
+
+/* 关键指数网格 */
+.indices-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.index-item {
+  background: rgb(40, 40, 40);
+  padding: 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(80, 80, 80, 0.2);
+}
+
+.index-name {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 3px;
+}
+
+.index-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.index-change {
+  font-size: 10px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.index-change.up {
+  color: #ef232a;
+}
+
+.index-change.down {
+  color: #14b143;
+}
+
+.change-icon {
+  font-size: 8px;
+}
+
+/* 刷新控制 */
+.refresh-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(80, 80, 80, 0.2);
+}
+
+.refresh-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.refresh-btn {
+  padding: 3px 8px;
+  font-size: 10px;
+  background: rgb(40, 40, 40);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(80, 80, 80, 0.3);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+  background: rgb(50, 50, 50);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.refresh-btn.active {
+  background: rgba(100, 180, 255, 0.2);
+  color: #64b4ff;
+  border-color: rgba(100, 180, 255, 0.5);
+}
+
+/* 综合评分显示 */
+.overall-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(80, 80, 80, 0.2);
+}
+
+.overall-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.overall-value {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* 雷达图容器 */
+.radar-container {
+  width: 100%;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radar-chart {
+  width: 100%;
+  height: 100%;
+  max-width: 130px;
+  max-height: 130px;
+}
+
+/* 雷达图背景网格 */
+.radar-grid {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 0.5;
+}
+
+/* 雷达图轴线 */
+.radar-axis {
+  stroke: rgba(255, 255, 255, 0.15);
+  stroke-width: 0.5;
+}
+
+/* 雷达图数据区域 */
+.radar-data {
+  fill: rgba(100, 180, 255, 0.25);
+  stroke: rgba(100, 180, 255, 0.9);
+  stroke-width: 2;
+  transition: all 0.3s;
+}
+
+.radar-data:hover {
+  fill: rgba(100, 180, 255, 0.35);
+}
+
+/* 雷达图数据点组 */
+.radar-point-group {
+  cursor: pointer;
+}
+
+/* 雷达图数据点 */
+.radar-point {
+  fill: #64b4ff;
+  stroke: #ffffff;
+  stroke-width: 1.5;
+  transition: all 0.3s;
+}
+
+.radar-point-group:hover .radar-point {
+  r: 5;
+  fill: #4da3ff;
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+/* 雷达图标签 */
+.radar-label {
+  fill: rgba(255, 255, 255, 0.7);
+  font-size: 8px;
+  font-weight: 500;
+  text-anchor: middle;
+}
+
+.radar-value {
+  fill: #64b4ff;
+  font-size: 10px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+/* 资金总览 */
+.capital-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.capital-item {
+  background: rgb(40, 40, 40);
+  padding: 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(80, 80, 80, 0.2);
+  text-align: center;
+}
+
+.capital-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 3px;
+}
+
+.capital-value {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.capital-value.up {
+  color: #ef232a;
+}
+
+.capital-value.down {
+  color: #14b143;
+}
+
+/* 行业热力图 */
+.sector-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sector-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgb(40, 40, 40);
+  padding: 5px 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(80, 80, 80, 0.2);
+}
+
+.sector-name {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.sector-value {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sector-value.up {
+  color: #ef232a;
+}
+
+.sector-value.down {
+  color: #14b143;
+}
+
+/* 滚动条样式 */
+.market-overview::-webkit-scrollbar,
+.section-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.market-overview::-webkit-scrollbar-track,
+.section-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.market-overview::-webkit-scrollbar-thumb,
+.section-content::-webkit-scrollbar-thumb {
+  background: rgba(136, 136, 136, 0.3);
+  border-radius: 2px;
+}
+
+.market-overview::-webkit-scrollbar-thumb:hover,
+.section-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(136, 136, 136, 0.5);
+}

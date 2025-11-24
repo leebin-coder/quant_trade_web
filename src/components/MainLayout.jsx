@@ -93,10 +93,10 @@ function MainLayout() {
       {/* 顶部导航栏 */}
       <Header
         style={{
-          height: 60,
-          lineHeight: '60px',
+          height: 48,
+          lineHeight: '48px',
           padding: '0 32px',
-          background: 'rgb(23, 23, 23)',
+          background: 'rgb(8, 8, 8)',
           backdropFilter: 'blur(20px)',
           borderBottom: 'none',
           display: 'flex',
@@ -114,7 +114,7 @@ function MainLayout() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           {/* Logo */}
           <div style={{
-            fontSize: '20px',
+            fontSize: '18px',
             fontWeight: 700,
             color: '#ffffff',
             letterSpacing: '-0.5px',
@@ -181,19 +181,19 @@ function MainLayout() {
 
       {/* 内容区域 */}
       <Content style={{
-        marginTop: '60px',
+        marginTop: '48px',
         padding: 0,
-        height: 'calc(100vh - 60px)',
+        height: 'calc(100vh - 48px)',
         overflow: 'hidden',
         transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-        background: 'rgb(23, 23, 23)',
+        background: 'rgb(8, 8, 8)',
       }}>
         <div
           className="content-area"
           style={{
-            padding: '24px 0 0 0',
+            padding: '2px 0 0 0',
             height: '100%',
-            background: 'rgb(28, 28, 28)',
+            background: 'rgb(8, 8, 8)',
             overflow: 'auto',
             transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
