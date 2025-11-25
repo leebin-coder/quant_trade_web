@@ -3,13 +3,14 @@ import { Tabs, Empty } from 'antd'
 import StockSelector from '../components/StockSelector'
 import StockChart from '../components/StockChart'
 import MarketOverview from '../components/MarketOverview'
-import { stockDailyAPI } from '../services/api'
+import { stockDailyAPI, stockCompanyAPI } from '../services/api'
 import './Quotes.css'
 
 function Quotes() {
   const [mainModule, setMainModule] = useState('stock') // 主模块: overview, stock, sector, capital, sentiment
   const [activeKey, setActiveKey] = useState('trading')
   const [selectedStock, setSelectedStock] = useState(null)
+  const [companyDetail, setCompanyDetail] = useState(null) // 公司详情数据
   const [chartData, setChartData] = useState([])
   const [loading, setLoading] = useState(false)
   const [period, setPeriod] = useState('daily') // 时间周期: minute-分时, daily-日线, weekly-周线, monthly-月线, quarterly-季线, yearly-年线
@@ -218,6 +219,24 @@ function Quotes() {
     }
   }
 
+  // 获取公司详情
+  const fetchCompanyDetail = async (stockCode) => {
+    try {
+      const response = await stockCompanyAPI.getCompanyDetail(stockCode)
+      console.log('公司详情响应:', response)
+      if (response.code === 200) {
+        setCompanyDetail(response.data)
+        console.log('公司详情数据:', response.data)
+      } else {
+        console.error('获取公司详情失败:', response.message)
+        setCompanyDetail(null)
+      }
+    } catch (error) {
+      console.error('获取公司详情失败:', error)
+      setCompanyDetail(null)
+    }
+  }
+
   // 当选中股票改变时，加载所有数据
   useEffect(() => {
     if (selectedStock) {
@@ -225,6 +244,7 @@ function Quotes() {
       setChartData([])
       setPeriod('daily') // 重置为日线
       fetchAllStockDaily(selectedStock.stockCode)
+      fetchCompanyDetail(selectedStock.stockCode) // 获取公司详情
     }
   }, [selectedStock])
 
@@ -277,6 +297,8 @@ function Quotes() {
                               data={chartData}
                               height={600}
                               title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
+                              stockInfo={selectedStock}
+                              companyDetail={companyDetail}
                               period={period}
                               onPeriodChange={handlePeriodChange}
                             />

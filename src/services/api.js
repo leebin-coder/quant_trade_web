@@ -156,4 +156,9 @@ export const stockRelationAPI = {
   unfollowStock: (stockCode) => api.delete('/stock-relations/follow', { params: { stockCode } }),
 }
 
+export const stockCompanyAPI = {
+  // 获取公司详情
+  getCompanyDetail: (stockCode) => api.get(`/stock-companies/${stockCode}`),
+}
+
 export default api

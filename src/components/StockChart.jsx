@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createChart } from 'lightweight-charts'
-import { Select, ConfigProvider, Checkbox, Radio } from 'antd'
+import { Select, ConfigProvider, Checkbox, Radio, Popover, message } from 'antd'
+import { InfoCircleOutlined, EnvironmentOutlined, CopyOutlined } from '@ant-design/icons'
 
 /**
  * TradingView Lightweight Charts - K线图 + 成交量图组件
@@ -8,10 +9,12 @@ import { Select, ConfigProvider, Checkbox, Radio } from 'antd'
  * @param {Array} props.data - K线数据 [{time: '2023-01-01', open: 100, high: 110, low: 90, close: 105, volume: 1000000}]
  * @param {Number} props.height - 图表总高度，默认 600
  * @param {String} props.title - 图表标题
+ * @param {Object} props.stockInfo - 股票详细信息
+ * @param {Object} props.companyDetail - 公司详情数据
  * @param {String} props.period - 时间周期：minute-分时, daily-日线, weekly-周线, monthly-月线, quarterly-季线, yearly-年线
  * @param {Function} props.onPeriodChange - 时间周期变化回调
  */
-function StockChart({ data = [], height = 600, title = '', period = 'daily', onPeriodChange }) {
+function StockChart({ data = [], height = 600, title = '', stockInfo = null, companyDetail = null, period = 'daily', onPeriodChange }) {
   const chartContainerRef = useRef(null)
   const volumeChartContainerRef = useRef(null) // 中间成交量图表容器
   const lowerChartContainerRef = useRef(null) // 下方指标图表容器
@@ -1230,15 +1233,389 @@ function StockChart({ data = [], height = 600, title = '', period = 'daily', onP
         >
           {/* 左侧：标题和控制器组 */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0 }}>
-            {/* 标题 */}
-            <div
-              style={{
-                fontSize: '28px',
-                fontWeight: 'bold',
-                color: '#ffffff',
-              }}
-            >
-              {title}
+            {/* 标题和股票信息图标 */}
+            <div>
+              <div
+                style={{
+                  fontSize: '28px',
+                  fontWeight: 'bold',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                }}
+              >
+                <span>{title}</span>
+                {/* 股票信息图标 */}
+                {stockInfo && (
+                  <ConfigProvider
+                    theme={{
+                      components: {
+                        Popover: {
+                          colorBgElevated: 'rgb(30, 30, 30)',
+                          colorText: 'rgba(255, 255, 255, 0.85)',
+                          fontSize: 12,
+                        },
+                      },
+                    }}
+                  >
+                    <Popover
+                      content={
+                        <div style={{ minWidth: '450px', maxWidth: '500px' }}>
+                          <div
+                            style={{
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              color: '#ffffff',
+                              marginBottom: '12px',
+                              paddingBottom: '8px',
+                              borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+                            }}
+                          >
+                            基本信息
+                          </div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '12px',
+                              fontSize: '11px',
+                            }}
+                          >
+                            {/* 全称信息 */}
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px',
+                                paddingBottom: '8px',
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '42px' }}>全称</span>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.95)', wordBreak: 'break-all', flex: 1 }}>{stockInfo.fullName || '--'}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '42px' }}>英文</span>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.85)', wordBreak: 'break-all', fontSize: '10px', flex: 1 }}>{stockInfo.enName || '--'}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '42px' }}>拼音</span>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{stockInfo.cnSpell || '--'}</span>
+                              </div>
+                            </div>
+
+                            {/* 基础信息网格 */}
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(3, 1fr)',
+                                gap: '8px 16px',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '42px' }}>交易所</span>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{stockInfo.exchange || '--'}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '42px' }}>市场</span>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{stockInfo.market || '--'}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '42px' }}>货币</span>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{stockInfo.currType || '--'}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '42px' }}>上市</span>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{stockInfo.listingDate || '--'}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '42px' }}>行业</span>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{stockInfo.industry || '--'}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '42px' }}>状态</span>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>
+                                  {stockInfo.status ? (stockInfo.status === 'L' ? '上市' : stockInfo.status === 'D' ? '退市' : stockInfo.status === 'P' ? '暂停' : stockInfo.status) : '--'}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '42px' }}>港通</span>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>
+                                  {stockInfo.isHs ? (stockInfo.isHs === 'N' ? '否' : stockInfo.isHs === 'H' ? '沪股通' : stockInfo.isHs === 'S' ? '深股通' : stockInfo.isHs) : '--'}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '42px' }}>退市</span>
+                                <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{stockInfo.delistDate || '--'}</span>
+                              </div>
+                            </div>
+
+                            {/* 实控人信息 */}
+                            {(stockInfo.actName || stockInfo.actEntType) && (
+                              <div
+                                style={{
+                                  paddingTop: '8px',
+                                  borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '8px',
+                                }}
+                              >
+                                {stockInfo.actName && (
+                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                    <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '42px' }}>实控人</span>
+                                    <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{stockInfo.actName}</span>
+                                  </div>
+                                )}
+                                {stockInfo.actEntType && (
+                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                    <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '42px' }}>性质</span>
+                                    <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{stockInfo.actEntType}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 公司详情（第二块）*/}
+                          <div
+                            style={{
+                              paddingTop: '12px',
+                              borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+                              marginTop: '12px',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '12px',
+                                fontSize: '11px',
+                              }}
+                            >
+                              {/* 公司详情网格 */}
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(2, 1fr)',
+                                  gap: '8px 16px',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>COMID</span>
+                                  {companyDetail?.comId ? (
+                                    <span style={{ color: 'rgba(24, 144, 255, 0.9)', fontSize: '10px', flex: 1, wordBreak: 'break-all' }}>
+                                      <a
+                                        href={`https://www.cods.org.cn`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: 'inherit', textDecoration: 'underline' }}
+                                      >
+                                        {companyDetail.comId}
+                                      </a>
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>--</span>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>法人代表</span>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{companyDetail?.chairman || '--'}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>总经理</span>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{companyDetail?.manager || '--'}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>董秘</span>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{companyDetail?.secretary || '--'}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>员工人数</span>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{companyDetail?.employees ? `${companyDetail.employees}人` : '--'}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>注册日期</span>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{companyDetail?.setupDate || '--'}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>注册资本</span>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>{companyDetail?.regCapital ? `${companyDetail.regCapital}万元` : '--'}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>所在省份</span>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    {companyDetail?.province || '--'}
+                                    {companyDetail?.province && companyDetail.province !== '--' && (
+                                      <a
+                                        href={`https://www.amap.com/search?query=${encodeURIComponent(companyDetail.province)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: 'rgba(24, 144, 255, 0.8)', fontSize: '10px', lineHeight: 1, display: 'flex', alignItems: 'center' }}
+                                      >
+                                        <EnvironmentOutlined />
+                                      </a>
+                                    )}
+                                  </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>所在城市</span>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    {companyDetail?.city || '--'}
+                                    {companyDetail?.city && companyDetail.city !== '--' && (
+                                      <a
+                                        href={`https://www.amap.com/search?query=${encodeURIComponent(companyDetail.city)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: 'rgba(24, 144, 255, 0.8)', fontSize: '10px', lineHeight: 1, display: 'flex', alignItems: 'center' }}
+                                      >
+                                        <EnvironmentOutlined />
+                                      </a>
+                                    )}
+                                  </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>办公室</span>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', wordBreak: 'break-all', flex: 1, display: 'flex', alignItems: 'center' }}>
+                                    <span style={{ marginRight: '6px' }}>{companyDetail?.office || '--'}</span>
+                                    {companyDetail?.office && companyDetail.office !== '--' && (
+                                      <a
+                                        href={`https://www.amap.com/search?query=${encodeURIComponent(companyDetail.office)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: 'rgba(24, 144, 255, 0.8)', fontSize: '10px', lineHeight: 1, display: 'flex', alignItems: 'center' }}
+                                      >
+                                        <EnvironmentOutlined />
+                                      </a>
+                                    )}
+                                  </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>公司主页</span>
+                                  {companyDetail?.website ? (
+                                    <span style={{ color: 'rgba(24, 144, 255, 0.9)', wordBreak: 'break-all', fontSize: '10px', flex: 1 }}>
+                                      <a
+                                        href={companyDetail.website.startsWith('http') ? companyDetail.website : `https://${companyDetail.website}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: 'inherit', textDecoration: 'underline' }}
+                                      >
+                                        {companyDetail.website}
+                                      </a>
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>--</span>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>电子邮件</span>
+                                  {companyDetail?.email ? (
+                                    <span style={{ color: 'rgba(24, 144, 255, 0.9)', fontSize: '10px', flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <a
+                                        href={`mailto:${companyDetail.email}`}
+                                        style={{ color: 'inherit', textDecoration: 'underline' }}
+                                      >
+                                        {companyDetail.email}
+                                      </a>
+                                      <CopyOutlined
+                                        style={{ color: 'rgba(24, 144, 255, 0.8)', fontSize: '10px', cursor: 'pointer' }}
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(companyDetail.email)
+                                          message.success('邮箱地址已复制')
+                                        }}
+                                      />
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: 'rgba(255, 255, 255, 0.95)', fontSize: '10px', flex: 1 }}>--</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* 公司介绍 */}
+                              <div
+                                style={{
+                                  paddingTop: '8px',
+                                  borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                                }}
+                              >
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '11px', fontWeight: '500' }}>公司介绍</span>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.85)', lineHeight: '1.7', fontSize: '10px' }}>
+                                    {companyDetail?.introduction ? (
+                                      companyDetail.introduction.length > 200
+                                        ? `${companyDetail.introduction.substring(0, 200)}...`
+                                        : companyDetail.introduction
+                                    ) : '--'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* 主要业务及产品 */}
+                              <div
+                                style={{
+                                  paddingTop: '8px',
+                                  borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                                }}
+                              >
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '11px', fontWeight: '500' }}>主要业务及产品</span>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.85)', lineHeight: '1.7', fontSize: '10px' }}>
+                                    {companyDetail?.mainBusiness ? (
+                                      companyDetail.mainBusiness.length > 200
+                                        ? `${companyDetail.mainBusiness.substring(0, 200)}...`
+                                        : companyDetail.mainBusiness
+                                    ) : '--'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* 经营范围 */}
+                              <div
+                                style={{
+                                  paddingTop: '8px',
+                                  borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                                }}
+                              >
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '11px', fontWeight: '500' }}>经营范围</span>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.85)', lineHeight: '1.7', fontSize: '10px' }}>
+                                    {companyDetail?.businessScope ? (
+                                      companyDetail.businessScope.length > 200
+                                        ? `${companyDetail.businessScope.substring(0, 200)}...`
+                                        : companyDetail.businessScope
+                                    ) : '--'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      }
+                      title={null}
+                      trigger="hover"
+                      placement="bottomLeft"
+                      overlayStyle={{ maxWidth: '480px' }}
+                    >
+                      <InfoCircleOutlined
+                        style={{
+                          fontSize: '16px',
+                          color: 'rgba(255, 255, 255, 0.4)',
+                          cursor: 'pointer',
+                          transition: 'color 0.3s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = 'rgba(24, 144, 255, 0.85)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'rgba(255, 255, 255, 0.4)'
+                        }}
+                      />
+                    </Popover>
+                  </ConfigProvider>
+                )}
+              </div>
             </div>
 
             {/* 控制器组 */}
