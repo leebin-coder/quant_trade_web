@@ -36,6 +36,63 @@ export const knowledgeBaseConfig = [
                         ]
                     }
                 ]
+            },
+            {
+                id: 'finance_2',
+                title: '技术指标',
+                url: "https://www.yuque.com/u32034952/wxggbp/indicators?singleDoc#",
+                children: [
+                    {
+                        id: 'indicator_ma',
+                        title: 'MA (移动平均线)',
+                        url: "https://www.yuque.com/u32034952/wxggbp/indicator-ma?singleDoc#"
+                    },
+                    {
+                        id: 'indicator_ema',
+                        title: 'EMA (指数移动平均线)',
+                        url: "https://www.yuque.com/u32034952/wxggbp/indicator-ema?singleDoc#"
+                    },
+                    {
+                        id: 'indicator_boll',
+                        title: 'BOLL (布林带)',
+                        url: "https://www.yuque.com/u32034952/wxggbp/indicator-boll?singleDoc#"
+                    },
+                    {
+                        id: 'indicator_kdj',
+                        title: 'KDJ (随机指标)',
+                        url: "https://www.yuque.com/u32034952/wxggbp/indicator-kdj?singleDoc#"
+                    },
+                    {
+                        id: 'indicator_macd',
+                        title: 'MACD (指数平滑异同移动平均线)',
+                        url: "https://www.yuque.com/u32034952/wxggbp/indicator-macd?singleDoc#"
+                    },
+                    {
+                        id: 'indicator_rsi',
+                        title: 'RSI (相对强弱指标)',
+                        url: "https://www.yuque.com/u32034952/wxggbp/indicator-rsi?singleDoc#"
+                    },
+                    {
+                        id: 'indicator_wr',
+                        title: 'WR (威廉指标)',
+                        url: "https://www.yuque.com/u32034952/wxggbp/indicator-wr?singleDoc#"
+                    },
+                    {
+                        id: 'indicator_dmi',
+                        title: 'DMI (趋向指标)',
+                        url: "https://www.yuque.com/u32034952/wxggbp/indicator-dmi?singleDoc#"
+                    },
+                    {
+                        id: 'indicator_cci',
+                        title: 'CCI (顺势指标)',
+                        url: "https://www.yuque.com/u32034952/wxggbp/indicator-cci?singleDoc#"
+                    },
+                    {
+                        id: 'indicator_bias',
+                        title: 'BIAS (乖离率)',
+                        url: "https://www.yuque.com/u32034952/wxggbp/indicator-bias?singleDoc#"
+                    }
+                ]
             }
         ]
     },

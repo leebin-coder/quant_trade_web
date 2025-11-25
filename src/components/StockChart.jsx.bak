@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { createChart } from 'lightweight-charts'
 import { Select, ConfigProvider, Checkbox, Radio, Popover, message, Tooltip } from 'antd'
-import { InfoCircleOutlined, EnvironmentOutlined, CopyOutlined, QuestionCircleOutlined, RightOutlined } from '@ant-design/icons'
+import { InfoCircleOutlined, EnvironmentOutlined, CopyOutlined, QuestionCircleOutlined } from '@ant-design/icons'
 import ReactMarkdown from 'react-markdown'
-import { indicatorDescriptions, popoverConfig, indicatorDocsId } from '../docs/indicators/index'
-import './StockChart.css'
+import { indicatorDescriptions } from '../docs/indicators/index'
 
 /**
  * TradingView Lightweight Charts - K线图 + 成交量图组件
@@ -16,9 +15,8 @@ import './StockChart.css'
  * @param {Object} props.companyDetail - 公司详情数据
  * @param {String} props.period - 时间周期：minute-分时, daily-日线, weekly-周线, monthly-月线, quarterly-季线, yearly-年线
  * @param {Function} props.onPeriodChange - 时间周期变化回调
- * @param {Function} props.onOpenKnowledge - 打开知识库回调，参数为文档节点ID
  */
-function StockChart({ data = [], height = 600, title = '', stockInfo = null, companyDetail = null, period = 'daily', onPeriodChange, onOpenKnowledge }) {
+function StockChart({ data = [], height = 600, title = '', stockInfo = null, companyDetail = null, period = 'daily', onPeriodChange }) {
   const chartContainerRef = useRef(null)
   const volumeChartContainerRef = useRef(null) // 中间成交量图表容器
   const lowerChartContainerRef = useRef(null) // 下方指标图表容器
@@ -1263,8 +1261,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       },
                     }}
                   >
-                    <span style={{ color: '#FF6D00', fontWeight: 500 }}>MA5</span>
-                  <Popover
+                    <Popover
                       content={
                         <div style={{ minWidth: '450px', maxWidth: '500px' }}>
                           <div
@@ -1928,7 +1925,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                 }}
               >
                 <Checkbox
-                  className="indicator-checkbox"
                   value="MA5"
                   style={{
                     margin: 0,
@@ -1937,40 +1933,34 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     backgroundColor: 'rgba(255, 109, 0, 0.15)',
                     border: indicators.includes('MA5') ? '1px solid #FF6D00' : '1px solid transparent',
                     display: 'flex',
-                                        alignItems: 'center',
+                    alignItems: 'center',
                     gap: '4px',
-                                      }}
+                  }}
                 >
-                  <span style={{ color: '#FF6D00', fontWeight: 500 }}>MA5</span>
-                  <Popover
+                  <span style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#FF6D00', fontWeight: 500 }}>MA5</span>
+                    <Popover
                     overlayInnerStyle={{
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
                     }}
                     content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.MA5)}
-                        >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.MA5}</ReactMarkdown>
-                        </div>
+                      <div style={{ maxWidth: '400px', color: '#ffffff' }}>
+                        <ReactMarkdown>{indicatorDescriptions.MA5}</ReactMarkdown>
                       </div>
                     }
+                    title={<span style={{ color: '#ffffff' }}>MA5</span>}
                     trigger="hover"
                   >
                     <QuestionCircleOutlined
-                      style={{ color: '#FF6D00', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
+                      style={{ color: '#FF6D00', fontSize: '11px', cursor: 'help' }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popover>
+                </span>
                 </Checkbox>
                 <Checkbox
-                  className="indicator-checkbox"
                   value="MA10"
                   style={{
                     margin: 0,
@@ -1979,40 +1969,34 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     backgroundColor: 'rgba(0, 188, 212, 0.15)',
                     border: indicators.includes('MA10') ? '1px solid #00BCD4' : '1px solid transparent',
                     display: 'flex',
-                                        alignItems: 'center',
+                    alignItems: 'center',
                     gap: '4px',
-                                      }}
+                  }}
                 >
-                  <span style={{ color: '#00BCD4', fontWeight: 500 }}>MA10</span>
-                  <Popover
+                  <span style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#00BCD4', fontWeight: 500 }}>MA10</span>
+                    <Popover
                     overlayInnerStyle={{
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
                     }}
                     content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.MA10)}
-                        >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.MA10}</ReactMarkdown>
-                        </div>
+                      <div style={{ maxWidth: '400px', color: '#ffffff' }}>
+                        <ReactMarkdown>{indicatorDescriptions.MA10}</ReactMarkdown>
                       </div>
                     }
+                    title={<span style={{ color: '#ffffff' }}>MA10</span>}
                     trigger="hover"
                   >
                     <QuestionCircleOutlined
-                      style={{ color: '#00BCD4', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
+                      style={{ color: '#00BCD4', fontSize: '11px', cursor: 'help', marginLeft: 'auto' }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popover>
+                </span>
                 </Checkbox>
                 <Checkbox
-                  className="indicator-checkbox"
                   value="MA20"
                   style={{
                     margin: 0,
@@ -2021,40 +2005,34 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     backgroundColor: 'rgba(156, 39, 176, 0.15)',
                     border: indicators.includes('MA20') ? '1px solid #9C27B0' : '1px solid transparent',
                     display: 'flex',
-                                        alignItems: 'center',
+                    alignItems: 'center',
                     gap: '4px',
-                                      }}
+                  }}
                 >
-                  <span style={{ color: '#9C27B0', fontWeight: 500 }}>MA20</span>
-                  <Popover
+                  <span style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#9C27B0', fontWeight: 500 }}>MA20</span>
+                    <Popover
                     overlayInnerStyle={{
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
                     }}
                     content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.MA20)}
-                        >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.MA20}</ReactMarkdown>
-                        </div>
+                      <div style={{ maxWidth: '400px', color: '#ffffff' }}>
+                        <ReactMarkdown>{indicatorDescriptions.MA20}</ReactMarkdown>
                       </div>
                     }
+                    title={<span style={{ color: '#ffffff' }}>MA20</span>}
                     trigger="hover"
                   >
                     <QuestionCircleOutlined
-                      style={{ color: '#9C27B0', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
+                      style={{ color: '#9C27B0', fontSize: '11px', cursor: 'help', marginLeft: 'auto' }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popover>
+                </span>
                 </Checkbox>
                 <Checkbox
-                  className="indicator-checkbox"
                   value="EMA12"
                   style={{
                     margin: 0,
@@ -2063,40 +2041,34 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     backgroundColor: 'rgba(76, 175, 80, 0.15)',
                     border: indicators.includes('EMA12') ? '1px solid #4CAF50' : '1px solid transparent',
                     display: 'flex',
-                                        alignItems: 'center',
+                    alignItems: 'center',
                     gap: '4px',
-                                      }}
+                  }}
                 >
-                  <span style={{ color: '#4CAF50', fontWeight: 500 }}>EMA12</span>
-                  <Popover
+                  <span style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#4CAF50', fontWeight: 500 }}>EMA12</span>
+                    <Popover
                     overlayInnerStyle={{
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
                     }}
                     content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.EMA12)}
-                        >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.EMA12}</ReactMarkdown>
-                        </div>
+                      <div style={{ maxWidth: '400px', color: '#ffffff' }}>
+                        <ReactMarkdown>{indicatorDescriptions.EMA12}</ReactMarkdown>
                       </div>
                     }
+                    title={<span style={{ color: '#ffffff' }}>EMA12</span>}
                     trigger="hover"
                   >
                     <QuestionCircleOutlined
-                      style={{ color: '#4CAF50', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
+                      style={{ color: '#4CAF50', fontSize: '11px', cursor: 'help', marginLeft: 'auto' }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popover>
+                </span>
                 </Checkbox>
                 <Checkbox
-                  className="indicator-checkbox"
                   value="EMA26"
                   style={{
                     margin: 0,
@@ -2105,40 +2077,34 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     backgroundColor: 'rgba(255, 87, 34, 0.15)',
                     border: indicators.includes('EMA26') ? '1px solid #FF5722' : '1px solid transparent',
                     display: 'flex',
-                                        alignItems: 'center',
+                    alignItems: 'center',
                     gap: '4px',
-                                      }}
+                  }}
                 >
-                  <span style={{ color: '#FF5722', fontWeight: 500 }}>EMA26</span>
-                  <Popover
+                  <span style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#FF5722', fontWeight: 500 }}>EMA26</span>
+                    <Popover
                     overlayInnerStyle={{
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
                     }}
                     content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.EMA26)}
-                        >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.EMA26}</ReactMarkdown>
-                        </div>
+                      <div style={{ maxWidth: '400px', color: '#ffffff' }}>
+                        <ReactMarkdown>{indicatorDescriptions.EMA26}</ReactMarkdown>
                       </div>
                     }
+                    title={<span style={{ color: '#ffffff' }}>EMA26</span>}
                     trigger="hover"
                   >
                     <QuestionCircleOutlined
-                      style={{ color: '#FF5722', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
+                      style={{ color: '#FF5722', fontSize: '11px', cursor: 'help', marginLeft: 'auto' }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popover>
+                </span>
                 </Checkbox>
                 <Checkbox
-                  className="indicator-checkbox"
                   value="BOLL"
                   style={{
                     margin: 0,
@@ -2147,37 +2113,32 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     backgroundColor: 'rgba(33, 150, 243, 0.15)',
                     border: indicators.includes('BOLL') ? '1px solid #2196F3' : '1px solid transparent',
                     display: 'flex',
-                                        alignItems: 'center',
+                    alignItems: 'center',
                     gap: '4px',
-                                      }}
+                  }}
                 >
-                  <span style={{ color: '#2196F3', fontWeight: 500 }}>BOLL</span>
-                  <Popover
+                  <span style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#2196F3', fontWeight: 500 }}>BOLL</span>
+                    <Popover
                     overlayInnerStyle={{
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
                     }}
                     content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.BOLL)}
-                        >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.BOLL}</ReactMarkdown>
-                        </div>
+                      <div style={{ maxWidth: '400px', color: '#ffffff' }}>
+                        <ReactMarkdown>{indicatorDescriptions.BOLL}</ReactMarkdown>
                       </div>
                     }
+                    title={<span style={{ color: '#ffffff' }}>BOLL</span>}
                     trigger="hover"
                   >
                     <QuestionCircleOutlined
-                      style={{ color: '#2196F3', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
+                      style={{ color: '#2196F3', fontSize: '11px', cursor: 'help', marginLeft: 'auto' }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popover>
+                </span>
                 </Checkbox>
               </Checkbox.Group>
             </ConfigProvider>
@@ -2216,7 +2177,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                 }}
               >
                 <Checkbox
-                  className="indicator-checkbox"
                   value="KDJ"
                   style={{
                     margin: 0,
@@ -2225,40 +2185,34 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     backgroundColor: 'rgba(33, 150, 243, 0.15)',
                     border: lowerIndicator === 'KDJ' ? '1px solid #2196F3' : '1px solid transparent',
                     display: 'flex',
-                                        alignItems: 'center',
+                    alignItems: 'center',
                     gap: '4px',
-                                      }}
+                  }}
                 >
-                  <span style={{ color: '#2196F3', fontWeight: 500 }}>KDJ</span>
-                  <Popover
+                  <span style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#2196F3', fontWeight: 500 }}>KDJ</span>
+                    <Popover
                     overlayInnerStyle={{
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
                     }}
                     content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.KDJ)}
-                        >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.KDJ}</ReactMarkdown>
-                        </div>
+                      <div style={{ maxWidth: '400px', color: '#ffffff' }}>
+                        <ReactMarkdown>{indicatorDescriptions.KDJ}</ReactMarkdown>
                       </div>
                     }
+                    title={<span style={{ color: '#ffffff' }}>KDJ</span>}
                     trigger="hover"
                   >
                     <QuestionCircleOutlined
-                      style={{ color: '#2196F3', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
+                      style={{ color: '#2196F3', fontSize: '11px', cursor: 'help', marginLeft: 'auto' }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popover>
+                </span>
                 </Checkbox>
                 <Checkbox
-                  className="indicator-checkbox"
                   value="MACD"
                   style={{
                     margin: 0,
@@ -2267,40 +2221,34 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     backgroundColor: 'rgba(76, 175, 80, 0.15)',
                     border: lowerIndicator === 'MACD' ? '1px solid #4CAF50' : '1px solid transparent',
                     display: 'flex',
-                                        alignItems: 'center',
+                    alignItems: 'center',
                     gap: '4px',
-                                      }}
+                  }}
                 >
-                  <span style={{ color: '#4CAF50', fontWeight: 500 }}>MACD</span>
-                  <Popover
+                  <span style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#4CAF50', fontWeight: 500 }}>MACD</span>
+                    <Popover
                     overlayInnerStyle={{
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
                     }}
                     content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.MACD)}
-                        >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.MACD}</ReactMarkdown>
-                        </div>
+                      <div style={{ maxWidth: '400px', color: '#ffffff' }}>
+                        <ReactMarkdown>{indicatorDescriptions.MACD}</ReactMarkdown>
                       </div>
                     }
+                    title={<span style={{ color: '#ffffff' }}>MACD</span>}
                     trigger="hover"
                   >
                     <QuestionCircleOutlined
-                      style={{ color: '#4CAF50', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
+                      style={{ color: '#4CAF50', fontSize: '11px', cursor: 'help', marginLeft: 'auto' }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popover>
+                </span>
                 </Checkbox>
                 <Checkbox
-                  className="indicator-checkbox"
                   value="RSI"
                   style={{
                     margin: 0,
@@ -2309,40 +2257,34 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     backgroundColor: 'rgba(255, 152, 0, 0.15)',
                     border: lowerIndicator === 'RSI' ? '1px solid #FF9800' : '1px solid transparent',
                     display: 'flex',
-                                        alignItems: 'center',
+                    alignItems: 'center',
                     gap: '4px',
-                                      }}
+                  }}
                 >
-                  <span style={{ color: '#FF9800', fontWeight: 500 }}>RSI</span>
-                  <Popover
+                  <span style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#FF9800', fontWeight: 500 }}>RSI</span>
+                    <Popover
                     overlayInnerStyle={{
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
                     }}
                     content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.RSI)}
-                        >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.RSI}</ReactMarkdown>
-                        </div>
+                      <div style={{ maxWidth: '400px', color: '#ffffff' }}>
+                        <ReactMarkdown>{indicatorDescriptions.RSI}</ReactMarkdown>
                       </div>
                     }
+                    title={<span style={{ color: '#ffffff' }}>RSI</span>}
                     trigger="hover"
                   >
                     <QuestionCircleOutlined
-                      style={{ color: '#FF9800', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
+                      style={{ color: '#FF9800', fontSize: '11px', cursor: 'help', marginLeft: 'auto' }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popover>
+                </span>
                 </Checkbox>
                 <Checkbox
-                  className="indicator-checkbox"
                   value="WR"
                   style={{
                     margin: 0,
@@ -2351,40 +2293,34 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     backgroundColor: 'rgba(233, 30, 99, 0.15)',
                     border: lowerIndicator === 'WR' ? '1px solid #E91E63' : '1px solid transparent',
                     display: 'flex',
-                                        alignItems: 'center',
+                    alignItems: 'center',
                     gap: '4px',
-                                      }}
+                  }}
                 >
-                  <span style={{ color: '#E91E63', fontWeight: 500 }}>WR</span>
-                  <Popover
+                  <span style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#E91E63', fontWeight: 500 }}>WR</span>
+                    <Popover
                     overlayInnerStyle={{
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
                     }}
                     content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.WR)}
-                        >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.WR}</ReactMarkdown>
-                        </div>
+                      <div style={{ maxWidth: '400px', color: '#ffffff' }}>
+                        <ReactMarkdown>{indicatorDescriptions.WR}</ReactMarkdown>
                       </div>
                     }
+                    title={<span style={{ color: '#ffffff' }}>WR</span>}
                     trigger="hover"
                   >
                     <QuestionCircleOutlined
-                      style={{ color: '#E91E63', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
+                      style={{ color: '#E91E63', fontSize: '11px', cursor: 'help', marginLeft: 'auto' }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popover>
+                </span>
                 </Checkbox>
                 <Checkbox
-                  className="indicator-checkbox"
                   value="DMI"
                   style={{
                     margin: 0,
@@ -2393,40 +2329,34 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     backgroundColor: 'rgba(103, 58, 183, 0.15)',
                     border: lowerIndicator === 'DMI' ? '1px solid #673AB7' : '1px solid transparent',
                     display: 'flex',
-                                        alignItems: 'center',
+                    alignItems: 'center',
                     gap: '4px',
-                                      }}
+                  }}
                 >
-                  <span style={{ color: '#673AB7', fontWeight: 500 }}>DMI</span>
-                  <Popover
+                  <span style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#673AB7', fontWeight: 500 }}>DMI</span>
+                    <Popover
                     overlayInnerStyle={{
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
                     }}
                     content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.DMI)}
-                        >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.DMI}</ReactMarkdown>
-                        </div>
+                      <div style={{ maxWidth: '400px', color: '#ffffff' }}>
+                        <ReactMarkdown>{indicatorDescriptions.DMI}</ReactMarkdown>
                       </div>
                     }
+                    title={<span style={{ color: '#ffffff' }}>DMI</span>}
                     trigger="hover"
                   >
                     <QuestionCircleOutlined
-                      style={{ color: '#673AB7', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
+                      style={{ color: '#673AB7', fontSize: '11px', cursor: 'help', marginLeft: 'auto' }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popover>
+                </span>
                 </Checkbox>
                 <Checkbox
-                  className="indicator-checkbox"
                   value="CCI"
                   style={{
                     margin: 0,
@@ -2435,40 +2365,34 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     backgroundColor: 'rgba(0, 188, 212, 0.15)',
                     border: lowerIndicator === 'CCI' ? '1px solid #00BCD4' : '1px solid transparent',
                     display: 'flex',
-                                        alignItems: 'center',
+                    alignItems: 'center',
                     gap: '4px',
-                                      }}
+                  }}
                 >
-                  <span style={{ color: '#00BCD4', fontWeight: 500 }}>CCI</span>
-                  <Popover
+                  <span style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#00BCD4', fontWeight: 500 }}>CCI</span>
+                    <Popover
                     overlayInnerStyle={{
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
                     }}
                     content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.CCI)}
-                        >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.CCI}</ReactMarkdown>
-                        </div>
+                      <div style={{ maxWidth: '400px', color: '#ffffff' }}>
+                        <ReactMarkdown>{indicatorDescriptions.CCI}</ReactMarkdown>
                       </div>
                     }
+                    title={<span style={{ color: '#ffffff' }}>CCI</span>}
                     trigger="hover"
                   >
                     <QuestionCircleOutlined
-                      style={{ color: '#00BCD4', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
+                      style={{ color: '#00BCD4', fontSize: '11px', cursor: 'help', marginLeft: 'auto' }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popover>
+                </span>
                 </Checkbox>
                 <Checkbox
-                  className="indicator-checkbox"
                   value="BIAS"
                   style={{
                     margin: 0,
@@ -2477,37 +2401,32 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     backgroundColor: 'rgba(255, 87, 34, 0.15)',
                     border: lowerIndicator === 'BIAS' ? '1px solid #FF5722' : '1px solid transparent',
                     display: 'flex',
-                                        alignItems: 'center',
+                    alignItems: 'center',
                     gap: '4px',
-                                      }}
+                  }}
                 >
-                  <span style={{ color: '#FF5722', fontWeight: 500 }}>BIAS</span>
-                  <Popover
+                  <span style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#FF5722', fontWeight: 500 }}>BIAS</span>
+                    <Popover
                     overlayInnerStyle={{
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
                     }}
                     content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.BIAS)}
-                        >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.BIAS}</ReactMarkdown>
-                        </div>
+                      <div style={{ maxWidth: '400px', color: '#ffffff' }}>
+                        <ReactMarkdown>{indicatorDescriptions.BIAS}</ReactMarkdown>
                       </div>
                     }
+                    title={<span style={{ color: '#ffffff' }}>BIAS</span>}
                     trigger="hover"
                   >
                     <QuestionCircleOutlined
-                      style={{ color: '#FF5722', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
+                      style={{ color: '#FF5722', fontSize: '11px', cursor: 'help', marginLeft: 'auto' }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popover>
+                </span>
                 </Checkbox>
               </Checkbox.Group>
             </ConfigProvider>
@@ -2517,7 +2436,8 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
           <div
             ref={chartContainerRef}
             style={{
-                            width: '100%',
+              position: 'relative',
+              width: '100%',
               height: '700px',
             }}
           />

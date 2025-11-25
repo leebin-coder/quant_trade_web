@@ -12,6 +12,7 @@ import {
 import AIFloatingBall from './AIFloatingBall'
 import KnowledgeBasePanel from './KnowledgeBasePanel'
 import TradingCalendar from './TradingCalendar'
+import { KnowledgeBaseProvider, useKnowledgeBase } from '../contexts/KnowledgeBaseContext'
 import './MainLayout.css'
 
 const { Header, Content } = Layout
