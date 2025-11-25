@@ -1510,7 +1510,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                                       >
                                         {companyDetail?.office
                                           ? (companyDetail.office.length > 12
-                                              ? `${companyDetail.office.substring(0, 2)}...`
+                                              ? `${companyDetail.office.substring(0, 12)}...`
                                               : companyDetail.office)
                                           : '--'}
                                       </span>
@@ -1536,9 +1536,8 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                                           color: 'rgba(24, 144, 255, 0.9)',
                                           fontSize: '10px',
                                           flex: 1,
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
                                           whiteSpace: 'nowrap',
+                                          minWidth: 0,
                                         }}
                                       >
                                         <a
@@ -1547,7 +1546,9 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                                           rel="noopener noreferrer"
                                           style={{ color: 'inherit', textDecoration: 'underline' }}
                                         >
-                                          {companyDetail.website}
+                                          {companyDetail.website.length > 22
+                                            ? `${companyDetail.website.substring(0, 22)}...`
+                                            : companyDetail.website}
                                         </a>
                                       </span>
                                     </Tooltip>
@@ -1562,8 +1563,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                                       <Tooltip title={companyDetail.email}>
                                         <span
                                           style={{
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
                                             whiteSpace: 'nowrap',
                                             minWidth: 0,
                                           }}
@@ -1572,7 +1571,9 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                                             href={`mailto:${companyDetail.email}`}
                                             style={{ color: 'inherit', textDecoration: 'underline' }}
                                           >
-                                            {companyDetail.email}
+                                            {companyDetail.email.length > 22
+                                              ? `${companyDetail.email.substring(0, 22)}...`
+                                              : companyDetail.email}
                                           </a>
                                         </span>
                                       </Tooltip>
