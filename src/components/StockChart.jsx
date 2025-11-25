@@ -1261,7 +1261,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                   >
                     <Popover
                       content={
-                        <div style={{ minWidth: '600px', maxWidth: '650px' }}>
+                        <div style={{ minWidth: '450px', maxWidth: '500px' }}>
                           <div
                             style={{
                               fontSize: '13px',
@@ -1310,8 +1310,8 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                             <div
                               style={{
                                 display: 'grid',
-                                gridTemplateColumns: 'repeat(4, 1fr)',
-                                gap: '10px 20px',
+                                gridTemplateColumns: 'repeat(3, 1fr)',
+                                gap: '8px 16px',
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
@@ -1446,14 +1446,25 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                                   <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>所在省份</span>
-                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    {companyDetail?.province || '--'}
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1, display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                    <Tooltip title={companyDetail?.province && companyDetail.province !== '--' ? companyDetail.province : null}>
+                                      <span
+                                        style={{
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap',
+                                          minWidth: 0,
+                                        }}
+                                      >
+                                        {companyDetail?.province || '--'}
+                                      </span>
+                                    </Tooltip>
                                     {companyDetail?.province && companyDetail.province !== '--' && (
                                       <a
                                         href={`https://www.amap.com/search?query=${encodeURIComponent(companyDetail.province)}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        style={{ color: 'rgba(24, 144, 255, 0.8)', fontSize: '10px', lineHeight: 1, display: 'flex', alignItems: 'center' }}
+                                        style={{ color: 'rgba(24, 144, 255, 0.8)', fontSize: '10px', lineHeight: 1, display: 'flex', alignItems: 'center', flexShrink: 0 }}
                                       >
                                         <EnvironmentOutlined />
                                       </a>
@@ -1462,14 +1473,25 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                                   <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>所在城市</span>
-                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    {companyDetail?.city || '--'}
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1, display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                    <Tooltip title={companyDetail?.city && companyDetail.city !== '--' ? companyDetail.city : null}>
+                                      <span
+                                        style={{
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap',
+                                          minWidth: 0,
+                                        }}
+                                      >
+                                        {companyDetail?.city || '--'}
+                                      </span>
+                                    </Tooltip>
                                     {companyDetail?.city && companyDetail.city !== '--' && (
                                       <a
                                         href={`https://www.amap.com/search?query=${encodeURIComponent(companyDetail.city)}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        style={{ color: 'rgba(24, 144, 255, 0.8)', fontSize: '10px', lineHeight: 1, display: 'flex', alignItems: 'center' }}
+                                        style={{ color: 'rgba(24, 144, 255, 0.8)', fontSize: '10px', lineHeight: 1, display: 'flex', alignItems: 'center', flexShrink: 0 }}
                                       >
                                         <EnvironmentOutlined />
                                       </a>
@@ -1478,15 +1500,14 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                                   <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>办公室</span>
-                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1, display: 'flex', alignItems: 'center' }}>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1, display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
                                     <Tooltip title={companyDetail?.office && companyDetail.office !== '--' ? companyDetail.office : null}>
                                       <span
                                         style={{
-                                          marginRight: '6px',
                                           overflow: 'hidden',
                                           textOverflow: 'ellipsis',
                                           whiteSpace: 'nowrap',
-                                          flex: 1,
+                                          minWidth: 0,
                                         }}
                                       >
                                         {companyDetail?.office || '--'}
@@ -1535,14 +1556,14 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                                   <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>电子邮件</span>
                                   {companyDetail?.email ? (
-                                    <span style={{ color: 'rgba(24, 144, 255, 0.9)', fontSize: '10px', flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ color: 'rgba(24, 144, 255, 0.9)', fontSize: '10px', flex: 1, display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
                                       <Tooltip title={companyDetail.email}>
                                         <span
                                           style={{
                                             overflow: 'hidden',
                                             textOverflow: 'ellipsis',
                                             whiteSpace: 'nowrap',
-                                            flex: 1,
+                                            minWidth: 0,
                                           }}
                                         >
                                           <a
