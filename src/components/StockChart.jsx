@@ -1504,13 +1504,15 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                                     <Tooltip title={companyDetail?.office && companyDetail.office !== '--' ? companyDetail.office : null}>
                                       <span
                                         style={{
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
                                           whiteSpace: 'nowrap',
                                           minWidth: 0,
                                         }}
                                       >
-                                        {companyDetail?.office || '--'}
+                                        {companyDetail?.office
+                                          ? (companyDetail.office.length > 12
+                                              ? `${companyDetail.office.substring(0, 2)}...`
+                                              : companyDetail.office)
+                                          : '--'}
                                       </span>
                                     </Tooltip>
                                     {companyDetail?.office && companyDetail.office !== '--' && (
