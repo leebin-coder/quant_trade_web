@@ -1263,7 +1263,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       },
                     }}
                   >
-                    <span style={{ color: '#FF6D00', fontWeight: 500 }}>MA5</span>
                   <Popover
                       content={
                         <div style={{ minWidth: '450px', maxWidth: '500px' }}>
