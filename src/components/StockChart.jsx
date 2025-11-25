@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createChart } from 'lightweight-charts'
-import { Select, ConfigProvider, Checkbox, Radio, Popover, message } from 'antd'
+import { Select, ConfigProvider, Checkbox, Radio, Popover, message, Tooltip } from 'antd'
 import { InfoCircleOutlined, EnvironmentOutlined, CopyOutlined } from '@ant-design/icons'
 
 /**
@@ -1478,14 +1478,26 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                                   <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>办公室</span>
-                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', wordBreak: 'break-all', flex: 1, display: 'flex', alignItems: 'center' }}>
-                                    <span style={{ marginRight: '6px' }}>{companyDetail?.office || '--'}</span>
+                                  <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1, display: 'flex', alignItems: 'center' }}>
+                                    <Tooltip title={companyDetail?.office && companyDetail.office !== '--' ? companyDetail.office : null}>
+                                      <span
+                                        style={{
+                                          marginRight: '6px',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap',
+                                          flex: 1,
+                                        }}
+                                      >
+                                        {companyDetail?.office || '--'}
+                                      </span>
+                                    </Tooltip>
                                     {companyDetail?.office && companyDetail.office !== '--' && (
                                       <a
                                         href={`https://www.amap.com/search?query=${encodeURIComponent(companyDetail.office)}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        style={{ color: 'rgba(24, 144, 255, 0.8)', fontSize: '10px', lineHeight: 1, display: 'flex', alignItems: 'center' }}
+                                        style={{ color: 'rgba(24, 144, 255, 0.8)', fontSize: '10px', lineHeight: 1, display: 'flex', alignItems: 'center', flexShrink: 0 }}
                                       >
                                         <EnvironmentOutlined />
                                       </a>
@@ -1495,16 +1507,27 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                                   <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>公司主页</span>
                                   {companyDetail?.website ? (
-                                    <span style={{ color: 'rgba(24, 144, 255, 0.9)', wordBreak: 'break-all', fontSize: '10px', flex: 1 }}>
-                                      <a
-                                        href={companyDetail.website.startsWith('http') ? companyDetail.website : `https://${companyDetail.website}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ color: 'inherit', textDecoration: 'underline' }}
+                                    <Tooltip title={companyDetail.website}>
+                                      <span
+                                        style={{
+                                          color: 'rgba(24, 144, 255, 0.9)',
+                                          fontSize: '10px',
+                                          flex: 1,
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap',
+                                        }}
                                       >
-                                        {companyDetail.website}
-                                      </a>
-                                    </span>
+                                        <a
+                                          href={companyDetail.website.startsWith('http') ? companyDetail.website : `https://${companyDetail.website}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          style={{ color: 'inherit', textDecoration: 'underline' }}
+                                        >
+                                          {companyDetail.website}
+                                        </a>
+                                      </span>
+                                    </Tooltip>
                                   ) : (
                                     <span style={{ color: 'rgba(255, 255, 255, 0.95)', flex: 1 }}>--</span>
                                   )}
@@ -1513,14 +1536,25 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                                   <span style={{ color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', minWidth: '56px' }}>电子邮件</span>
                                   {companyDetail?.email ? (
                                     <span style={{ color: 'rgba(24, 144, 255, 0.9)', fontSize: '10px', flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      <a
-                                        href={`mailto:${companyDetail.email}`}
-                                        style={{ color: 'inherit', textDecoration: 'underline' }}
-                                      >
-                                        {companyDetail.email}
-                                      </a>
+                                      <Tooltip title={companyDetail.email}>
+                                        <span
+                                          style={{
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                            flex: 1,
+                                          }}
+                                        >
+                                          <a
+                                            href={`mailto:${companyDetail.email}`}
+                                            style={{ color: 'inherit', textDecoration: 'underline' }}
+                                          >
+                                            {companyDetail.email}
+                                          </a>
+                                        </span>
+                                      </Tooltip>
                                       <CopyOutlined
-                                        style={{ color: 'rgba(24, 144, 255, 0.8)', fontSize: '10px', cursor: 'pointer' }}
+                                        style={{ color: 'rgba(24, 144, 255, 0.8)', fontSize: '10px', cursor: 'pointer', flexShrink: 0 }}
                                         onClick={() => {
                                           navigator.clipboard.writeText(companyDetail.email)
                                           message.success('邮箱地址已复制')
