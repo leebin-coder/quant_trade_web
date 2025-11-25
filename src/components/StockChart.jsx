@@ -1261,7 +1261,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                   >
                     <Popover
                       content={
-                        <div style={{ minWidth: '450px', maxWidth: '500px' }}>
+                        <div style={{ minWidth: '600px', maxWidth: '650px' }}>
                           <div
                             style={{
                               fontSize: '13px',
@@ -1310,8 +1310,8 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                             <div
                               style={{
                                 display: 'grid',
-                                gridTemplateColumns: 'repeat(3, 1fr)',
-                                gap: '8px 16px',
+                                gridTemplateColumns: 'repeat(4, 1fr)',
+                                gap: '10px 20px',
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
