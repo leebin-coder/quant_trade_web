@@ -69,6 +69,8 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
         const containerWidth = chartContainerRef.current.clientWidth || 1000
         const containerHeight = chartContainerRef.current.clientHeight || 500
 
+        console.log('📊 图表初始化 - 容器尺寸:', { containerWidth, containerHeight })
+
         // 创建图表 (v3.8 API)
         const chart = createChart(chartContainerRef.current, {
           width: containerWidth,
@@ -832,12 +834,20 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
 
   // 更新数据
   useEffect(() => {
+    console.log('📈 更新数据 useEffect 触发', {
+      isChartReady,
+      hasCandlestickSeries: !!candlestickSeriesRef.current,
+      dataLength: data?.length
+    })
+
     if (!isChartReady || !candlestickSeriesRef.current) {
+      console.log('⚠️ 图表未准备好或系列未创建')
       return
     }
 
     // 如果没有数据，也要通知父组件图表已经准备好（避免一直加载）
     if (!data || data.length === 0) {
+      console.log('⚠️ 没有数据，通知图表准备完成')
       setTimeout(() => {
         onChartReady?.()
       }, 150)
@@ -845,6 +855,8 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     }
 
     try {
+      console.log('✅ 开始设置K线数据，数据条数:', data.length)
+
       // 设置K线数据
       const candlestickData = data.map(item => ({
         time: item.time,
@@ -855,6 +867,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       }))
 
       candlestickSeriesRef.current.setData(candlestickData)
+      console.log('✅ K线数据设置成功')
 
       // 数据加载完成后，初始更新最高最低价标记
       setTimeout(() => {
@@ -871,10 +884,11 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       // 通知父组件图表渲染完成
       // 延迟一小段时间确保所有渲染都完成
       setTimeout(() => {
+        console.log('✅ 通知父组件图表渲染完成')
         onChartReady?.()
       }, 150)
     } catch (error) {
-      console.error('Failed to set chart data:', error)
+      console.error('❌ Failed to set chart data:', error)
       // 即使出错也要通知完成，避免一直加载
       onChartReady?.()
     }

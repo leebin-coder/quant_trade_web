@@ -216,6 +216,7 @@ function Quotes() {
   const fetchAllAdjustTypes = async (stockCode) => {
     if (!stockCode) return
 
+    console.log('🔄 开始预加载所有复权类型的数据:', stockCode)
     setLoading(true)
     loadingStartTimeRef.current = Date.now()
 
@@ -231,6 +232,12 @@ function Quotes() {
         fetchStockDailyByAdjustFlag(stockCode, 3), // 不复权
       ])
 
+      console.log('✅ 所有复权数据加载完成', {
+        后复权: data1.length,
+        前复权: data2.length,
+        不复权: data3.length
+      })
+
       // 缓存所有数据
       dataCacheRef.current = {
         1: data1,
@@ -242,12 +249,15 @@ function Quotes() {
       const currentData = dataCacheRef.current[adjustFlag] || []
       allDataRef.current = currentData
 
+      console.log('📊 设置图表数据，当前复权类型:', adjustFlag, '数据条数:', currentData.length)
+
       // 根据当前周期聚合数据并显示
       const aggregated = aggregateData(currentData, period)
+      console.log('📊 聚合后数据条数:', aggregated.length)
       setChartData(aggregated)
       // 注意：不在这里设置 setLoading(false)，等待图表渲染完成的回调
     } catch (error) {
-      console.error('查询日线数据失败:', error)
+      console.error('❌ 查询日线数据失败:', error)
       setLoading(false)
     }
   }
@@ -260,6 +270,7 @@ function Quotes() {
 
   // 处理图表渲染完成
   const handleChartReady = () => {
+    console.log('🎯 父组件收到图表渲染完成通知')
     // 图表渲染完成，停止加载动画
     setLoading(false)
   }
