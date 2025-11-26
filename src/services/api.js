@@ -144,6 +144,8 @@ export const tradingCalendarAPI = {
 
 export const stockDailyAPI = {
   // 查询股票日线数据
+  // params: { stockCode, startDate, endDate, sortOrder, adjustFlag }
+  // adjustFlag: 1-后复权, 2-前复权, 3-不复权 (默认为3)
   queryStockDaily: (params) => api.post('/stock-daily/query', params),
 }
 

@@ -9,16 +9,18 @@ import './StockChart.css'
 /**
  * TradingView Lightweight Charts - K线图 + 成交量图组件
  * @param {Object} props
- * @param {Array} props.data - K线数据 [{time: '2023-01-01', open: 100, high: 110, low: 90, close: 105, volume: 1000000}]
+ * @param {Array} props.data - K线数据 [{time: '2023-01-01', open: 100, high: 110, low: 90, close: 105, volume: 1000000, ...}]
  * @param {Number} props.height - 图表总高度，默认 600
  * @param {String} props.title - 图表标题
  * @param {Object} props.stockInfo - 股票详细信息
  * @param {Object} props.companyDetail - 公司详情数据
  * @param {String} props.period - 时间周期：minute-分时, daily-日线, weekly-周线, monthly-月线, quarterly-季线, yearly-年线
  * @param {Function} props.onPeriodChange - 时间周期变化回调
+ * @param {Number} props.adjustFlag - 复权类型: 1-后复权, 2-前复权, 3-不复权
+ * @param {Function} props.onAdjustFlagChange - 复权类型变化回调
  * @param {Function} props.onOpenKnowledge - 打开知识库回调，参数为文档节点ID
  */
-function StockChart({ data = [], height = 600, title = '', stockInfo = null, companyDetail = null, period = 'daily', onPeriodChange, onOpenKnowledge }) {
+function StockChart({ data = [], height = 600, title = '', stockInfo = null, companyDetail = null, period = 'daily', onPeriodChange, adjustFlag = 3, onAdjustFlagChange, onOpenKnowledge }) {
   const chartContainerRef = useRef(null)
   const volumeChartContainerRef = useRef(null) // 中间成交量图表容器
   const lowerChartContainerRef = useRef(null) // 下方指标图表容器
@@ -33,7 +35,8 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
   const [isChartReady, setIsChartReady] = useState(false)
   const [isVolumeChartReady, setIsVolumeChartReady] = useState(false) // 中间成交量图表是否准备好
   const [isLowerChartReady, setIsLowerChartReady] = useState(false) // 下方图表是否准备好
-  const [adjustType, setAdjustType] = useState('qfq') // 复权类型: none-未复权, qfq-前复权, hfq-后复权
+  // 将 adjustFlag (1,2,3) 映射为 adjustType ('hfq','qfq','none')
+  const adjustType = adjustFlag === 1 ? 'hfq' : adjustFlag === 2 ? 'qfq' : 'none'
   const [selectedData, setSelectedData] = useState(null) // 当前悬停或选中的K线数据
   const [indicators, setIndicators] = useState([]) // 选中的上方技术指标
   const [lowerIndicator, setLowerIndicator] = useState('KDJ') // 选中的下方技术指标,默认选中KDJ(单选)
@@ -887,14 +890,27 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     if (!selectedData) return null
 
     const currentIndex = data.findIndex(d => d.time === selectedData.time)
-    const previousClose = getPreviousClose(currentIndex)
-    const { changePercent, changeAmount } = calculateChange(selectedData.close, previousClose)
+
+    // 优先使用API返回的字段，如果没有则计算
+    let previousClose = selectedData.preClose
+    let changePercent = selectedData.pctChange
+    let changeAmount = selectedData.changeAmount
+
+    // 如果API没有返回这些字段，使用本地计算
+    if (previousClose === null || previousClose === undefined) {
+      previousClose = getPreviousClose(currentIndex)
+    }
+    if (changePercent === null || changePercent === undefined || changeAmount === null || changeAmount === undefined) {
+      const calculated = calculateChange(selectedData.close, previousClose)
+      changePercent = calculated.changePercent
+      changeAmount = calculated.changeAmount
+    }
 
     return {
       ...selectedData,
       changePercent,
       changeAmount,
-      previousClose, // 添加上一个交易日的收盘价
+      previousClose, // 上一个交易日的收盘价
     }
   }
 
@@ -2056,7 +2072,12 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
             >
               <Radio.Group
                 value={adjustType}
-                onChange={(e) => setAdjustType(e.target.value)}
+                onChange={(e) => {
+                  const newAdjustType = e.target.value
+                  // 将 adjustType ('hfq','qfq','none') 转换为 adjustFlag (1,2,3)
+                  const newAdjustFlag = newAdjustType === 'hfq' ? 1 : newAdjustType === 'qfq' ? 2 : 3
+                  onAdjustFlagChange?.(newAdjustFlag)
+                }}
                 style={{
                   display: 'flex',
                   gap: '8px',
@@ -3058,8 +3079,102 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                   {displayData ? `${(displayData.volume * displayData.close / 100000000).toFixed(2)} 亿元` : '--'}
                 </div>
               </div>
+              {/* 换手率 */}
+              {displayData?.turn !== null && displayData?.turn !== undefined && (
+                <div>
+                  <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>换手率</div>
+                  <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff' }}>
+                    {displayData.turn.toFixed(2)}%
+                  </div>
+                </div>
+              )}
+              {/* 交易状态 */}
+              {displayData?.tradeStatus !== null && displayData?.tradeStatus !== undefined && (
+                <div>
+                  <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>交易状态</div>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: displayData.tradeStatus === 1 ? '#4CAF50' : '#FF9800'
+                  }}>
+                    {displayData.tradeStatus === 1 ? '正常交易' : '停牌'}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* 第二块半：估值指标 */}
+          {(displayData?.peTtm !== null || displayData?.pbMrq !== null || displayData?.psTtm !== null || displayData?.pcfNcfTtm !== null) && (
+            <div
+              style={{
+                paddingTop: '12px',
+                marginTop: '20px',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#ffffff',
+                  marginBottom: '10px',
+                }}
+              >
+                估值指标
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {/* PE TTM */}
+                {displayData?.peTtm !== null && displayData?.peTtm !== undefined && (
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>PE(TTM)</div>
+                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff' }}>
+                      {displayData.peTtm.toFixed(2)}
+                    </div>
+                  </div>
+                )}
+                {/* PB MRQ */}
+                {displayData?.pbMrq !== null && displayData?.pbMrq !== undefined && (
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>PB(MRQ)</div>
+                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff' }}>
+                      {displayData.pbMrq.toFixed(2)}
+                    </div>
+                  </div>
+                )}
+                {/* PS TTM */}
+                {displayData?.psTtm !== null && displayData?.psTtm !== undefined && (
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>PS(TTM)</div>
+                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff' }}>
+                      {displayData.psTtm.toFixed(2)}
+                    </div>
+                  </div>
+                )}
+                {/* PCF TTM */}
+                {displayData?.pcfNcfTtm !== null && displayData?.pcfNcfTtm !== undefined && (
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>PCF(TTM)</div>
+                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff' }}>
+                      {displayData.pcfNcfTtm.toFixed(2)}
+                    </div>
+                  </div>
+                )}
+                {/* ST状态 */}
+                {displayData?.isSt !== null && displayData?.isSt !== undefined && (
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>ST状态</div>
+                    <div style={{
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: displayData.isSt === 1 ? '#FF5722' : '#4CAF50'
+                    }}>
+                      {displayData.isSt === 1 ? 'ST' : '正常'}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* 第三块：技术指标数据 */}
           <div

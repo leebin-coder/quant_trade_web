@@ -16,6 +16,7 @@ function Quotes() {
   const [chartData, setChartData] = useState([])
   const [loading, setLoading] = useState(false)
   const [period, setPeriod] = useState('daily') // 时间周期: minute-分时, daily-日线, weekly-周线, monthly-月线, quarterly-季线, yearly-年线
+  const [adjustFlag, setAdjustFlag] = useState(3) // 复权类型: 1-后复权, 2-前复权, 3-不复权
   const allDataRef = useRef([])
   const loadingStartTimeRef = useRef(null)
 
@@ -77,13 +78,25 @@ function Quotes() {
       if (currentPeriodKey !== periodKey) {
         // 新周期，处理上一个周期的数据
         if (currentGroup.length > 0) {
+          const lastItem = currentGroup[currentGroup.length - 1]
           const aggregated = {
             time: currentGroup[0].time, // 使用该周期第一天的日期
             open: currentGroup[0].open,
             high: Math.max(...currentGroup.map(d => d.high)),
             low: Math.min(...currentGroup.map(d => d.low)),
-            close: currentGroup[currentGroup.length - 1].close,
+            close: lastItem.close,
             volume: currentGroup.reduce((sum, d) => sum + d.volume, 0),
+            // 使用周期最后一天的数据
+            preClose: lastItem.preClose,
+            changeAmount: lastItem.changeAmount,
+            pctChange: lastItem.pctChange,
+            turn: currentGroup.reduce((sum, d) => sum + (d.turn || 0), 0), // 换手率累加
+            tradeStatus: lastItem.tradeStatus,
+            peTtm: lastItem.peTtm,
+            pbMrq: lastItem.pbMrq,
+            psTtm: lastItem.psTtm,
+            pcfNcfTtm: lastItem.pcfNcfTtm,
+            isSt: lastItem.isSt,
           }
           result.push(aggregated)
         }
@@ -98,13 +111,25 @@ function Quotes() {
 
       // 处理最后一组
       if (index === dailyData.length - 1 && currentGroup.length > 0) {
+        const lastItem = currentGroup[currentGroup.length - 1]
         const aggregated = {
           time: currentGroup[0].time,
           open: currentGroup[0].open,
           high: Math.max(...currentGroup.map(d => d.high)),
           low: Math.min(...currentGroup.map(d => d.low)),
-          close: currentGroup[currentGroup.length - 1].close,
+          close: lastItem.close,
           volume: currentGroup.reduce((sum, d) => sum + d.volume, 0),
+          // 使用周期最后一天的数据
+          preClose: lastItem.preClose,
+          changeAmount: lastItem.changeAmount,
+          pctChange: lastItem.pctChange,
+          turn: currentGroup.reduce((sum, d) => sum + (d.turn || 0), 0), // 换手率累加
+          tradeStatus: lastItem.tradeStatus,
+          peTtm: lastItem.peTtm,
+          pbMrq: lastItem.pbMrq,
+          psTtm: lastItem.psTtm,
+          pcfNcfTtm: lastItem.pcfNcfTtm,
+          isSt: lastItem.isSt,
         }
         result.push(aggregated)
       }
@@ -138,6 +163,7 @@ function Quotes() {
           startDate: currentStartDate,
           endDate: currentEndDate,
           sortOrder: 'asc',
+          adjustFlag: adjustFlag, // 复权类型
         })
 
         if (response.code === 200 && response.data && response.data.length > 0) {
@@ -150,6 +176,17 @@ function Quotes() {
               low: parseFloat(item.lowPrice),
               close: parseFloat(item.closePrice),
               volume: parseFloat(item.volume),
+              // 新增字段
+              preClose: item.preClose ? parseFloat(item.preClose) : null,
+              changeAmount: item.changeAmount ? parseFloat(item.changeAmount) : null,
+              pctChange: item.pctChange ? parseFloat(item.pctChange) : null,
+              turn: item.turn ? parseFloat(item.turn) : null,
+              tradeStatus: item.tradeStatus,
+              peTtm: item.peTtm ? parseFloat(item.peTtm) : null,
+              pbMrq: item.pbMrq ? parseFloat(item.pbMrq) : null,
+              psTtm: item.psTtm ? parseFloat(item.psTtm) : null,
+              pcfNcfTtm: item.pcfNcfTtm ? parseFloat(item.pcfNcfTtm) : null,
+              isSt: item.isSt,
             }
           })
 
@@ -218,6 +255,17 @@ function Quotes() {
     if (allDataRef.current.length > 0) {
       const aggregated = aggregateData(allDataRef.current, newPeriod)
       setChartData(aggregated)
+    }
+  }
+
+  // 处理复权类型变化
+  const handleAdjustFlagChange = (newAdjustFlag) => {
+    setAdjustFlag(newAdjustFlag)
+    // 重新加载数据
+    if (selectedStock) {
+      allDataRef.current = []
+      setChartData([])
+      fetchAllStockDaily(selectedStock.stockCode)
     }
   }
 
@@ -318,6 +366,8 @@ function Quotes() {
                               companyDetail={companyDetail}
                               period={period}
                               onPeriodChange={handlePeriodChange}
+                              adjustFlag={adjustFlag}
+                              onAdjustFlagChange={handleAdjustFlagChange}
                               onOpenKnowledge={openKnowledge}
                             />
                           ) : (
