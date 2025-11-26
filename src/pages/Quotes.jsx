@@ -19,6 +19,9 @@ function Quotes() {
   const [adjustFlag, setAdjustFlag] = useState(3) // 复权类型: 1-后复权, 2-前复权, 3-不复权
   const allDataRef = useRef([])
   const loadingStartTimeRef = useRef(null)
+  // 缓存三种复权类型的数据: { 1: [], 2: [], 3: [] }
+  const dataCacheRef = useRef({})
+  const currentStockCodeRef = useRef(null)
 
   // 五大模块
   const mainModules = [
@@ -138,12 +141,10 @@ function Quotes() {
     return result
   }
 
-  // 查询所有历史日线数据（5年5年查询直到所有数据加载完）
-  const fetchAllStockDaily = async (stockCode) => {
-    if (!stockCode) return
+  // 查询指定复权类型的所有历史日线数据（5年5年查询直到所有数据加载完）
+  const fetchStockDailyByAdjustFlag = async (stockCode, targetAdjustFlag) => {
+    if (!stockCode) return []
 
-    setLoading(true)
-    loadingStartTimeRef.current = Date.now()
     let allData = []
 
     try {
@@ -163,7 +164,7 @@ function Quotes() {
           startDate: currentStartDate,
           endDate: currentEndDate,
           sortOrder: 'asc',
-          adjustFlag: adjustFlag, // 复权类型
+          adjustFlag: targetAdjustFlag, // 复权类型
         })
 
         if (response.code === 200 && response.data && response.data.length > 0) {
@@ -204,30 +205,47 @@ function Quotes() {
         }
       }
 
-      if (allData.length > 0) {
-        allDataRef.current = allData
+      return allData
+    } catch (error) {
+      console.error(`查询复权类型${targetAdjustFlag}的日线数据失败:`, error)
+      return []
+    }
+  }
 
-        // 计算已经过去的时间
-        const elapsedTime = Date.now() - loadingStartTimeRef.current
-        const remainingTime = Math.max(0, 1800 - elapsedTime)
+  // 预加载所有三种复权类型的数据
+  const fetchAllAdjustTypes = async (stockCode) => {
+    if (!stockCode) return
 
-        // 确保加载动画至少显示1.8秒
-        setTimeout(() => {
-          // 根据当前周期聚合数据
-          const aggregated = aggregateData(allData, period)
-          setChartData(aggregated)
-          setLoading(false)
-        }, remainingTime)
-      } else {
-        // 即使无数据，也要等待1.8秒
-        const elapsedTime = Date.now() - loadingStartTimeRef.current
-        const remainingTime = Math.max(0, 1800 - elapsedTime)
+    setLoading(true)
+    loadingStartTimeRef.current = Date.now()
 
-        setTimeout(() => {
-          setChartData([])
-          setLoading(false)
-        }, remainingTime)
+    // 清空缓存
+    dataCacheRef.current = {}
+    currentStockCodeRef.current = stockCode
+
+    try {
+      // 并行加载三种复权类型的数据
+      const [data1, data2, data3] = await Promise.all([
+        fetchStockDailyByAdjustFlag(stockCode, 1), // 后复权
+        fetchStockDailyByAdjustFlag(stockCode, 2), // 前复权
+        fetchStockDailyByAdjustFlag(stockCode, 3), // 不复权
+      ])
+
+      // 缓存所有数据
+      dataCacheRef.current = {
+        1: data1,
+        2: data2,
+        3: data3,
       }
+
+      // 使用当前选中的复权类型数据
+      const currentData = dataCacheRef.current[adjustFlag] || []
+      allDataRef.current = currentData
+
+      // 根据当前周期聚合数据并显示
+      const aggregated = aggregateData(currentData, period)
+      setChartData(aggregated)
+      // 注意：不在这里设置 setLoading(false)，等待图表渲染完成的回调
     } catch (error) {
       console.error('查询日线数据失败:', error)
       setLoading(false)
@@ -238,6 +256,12 @@ function Quotes() {
   const handleStockSelect = (stock) => {
     setSelectedStock(stock)
     setActiveKey('trading') // 切换到交易数据Tab
+  }
+
+  // 处理图表渲染完成
+  const handleChartReady = () => {
+    // 图表渲染完成，停止加载动画
+    setLoading(false)
   }
 
   // 处理时间周期变化
@@ -261,11 +285,18 @@ function Quotes() {
   // 处理复权类型变化
   const handleAdjustFlagChange = (newAdjustFlag) => {
     setAdjustFlag(newAdjustFlag)
-    // 重新加载数据
-    if (selectedStock) {
-      allDataRef.current = []
-      setChartData([])
-      fetchAllStockDaily(selectedStock.stockCode)
+
+    // 如果有缓存数据，直接使用，不重新请求
+    if (dataCacheRef.current[newAdjustFlag] && dataCacheRef.current[newAdjustFlag].length > 0) {
+      const cachedData = dataCacheRef.current[newAdjustFlag]
+      allDataRef.current = cachedData
+      const aggregated = aggregateData(cachedData, period)
+      setChartData(aggregated)
+    } else {
+      // 如果缓存中没有数据，重新加载
+      if (selectedStock) {
+        fetchAllAdjustTypes(selectedStock.stockCode)
+      }
     }
   }
 
@@ -293,7 +324,7 @@ function Quotes() {
       allDataRef.current = []
       setChartData([])
       setPeriod('daily') // 重置为日线
-      fetchAllStockDaily(selectedStock.stockCode)
+      fetchAllAdjustTypes(selectedStock.stockCode) // 预加载所有复权类型的数据
       fetchCompanyDetail(selectedStock.stockCode) // 获取公司详情
     }
   }, [selectedStock])
@@ -350,7 +381,7 @@ function Quotes() {
                   >
                     <div className="tab-content">
                       {item.key === 'trading' ? (
-                        // 交易数据Tab - 显示K线图
+                        // 交易数据Tab - 显示K线图和看板
                         selectedStock ? (
                           loading ? (
                             // 加载中 - 显示四色渐变文字
@@ -358,18 +389,38 @@ function Quotes() {
                               <div className="loading-text">{item.label}</div>
                             </div>
                           ) : chartData.length > 0 ? (
-                            <StockChart
-                              data={chartData}
-                              height={600}
-                              title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
-                              stockInfo={selectedStock}
-                              companyDetail={companyDetail}
-                              period={period}
-                              onPeriodChange={handlePeriodChange}
-                              adjustFlag={adjustFlag}
-                              onAdjustFlagChange={handleAdjustFlagChange}
-                              onOpenKnowledge={openKnowledge}
-                            />
+                            <div className="trading-content-layout">
+                              {/* 上方图表区域 - 动态高度 */}
+                              <div className="chart-area">
+                                <StockChart
+                                  data={chartData}
+                                  title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
+                                  stockInfo={selectedStock}
+                                  companyDetail={companyDetail}
+                                  period={period}
+                                  onPeriodChange={handlePeriodChange}
+                                  adjustFlag={adjustFlag}
+                                  onAdjustFlagChange={handleAdjustFlagChange}
+                                  onChartReady={handleChartReady}
+                                  onOpenKnowledge={openKnowledge}
+                                />
+                              </div>
+                              {/* 下方看板区域 - 固定300px */}
+                              <div className="dashboard-area">
+                                <div className="dashboard-content">
+                                  {/* 看板内容 */}
+                                  <div style={{
+                                    color: '#ffffff',
+                                    fontSize: '18px',
+                                    fontWeight: '600',
+                                    textAlign: 'center',
+                                    paddingTop: '130px'
+                                  }}>
+                                    数据看板区域
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           ) : (
                             // 无数据 - 显示Empty组件
                             <div className="tab-content-placeholder">

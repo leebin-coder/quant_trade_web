@@ -18,9 +18,10 @@ import './StockChart.css'
  * @param {Function} props.onPeriodChange - 时间周期变化回调
  * @param {Number} props.adjustFlag - 复权类型: 1-后复权, 2-前复权, 3-不复权
  * @param {Function} props.onAdjustFlagChange - 复权类型变化回调
+ * @param {Function} props.onChartReady - 图表渲染完成回调
  * @param {Function} props.onOpenKnowledge - 打开知识库回调，参数为文档节点ID
  */
-function StockChart({ data = [], height = 600, title = '', stockInfo = null, companyDetail = null, period = 'daily', onPeriodChange, adjustFlag = 3, onAdjustFlagChange, onOpenKnowledge }) {
+function StockChart({ data = [], height = 600, title = '', stockInfo = null, companyDetail = null, period = 'daily', onPeriodChange, adjustFlag = 3, onAdjustFlagChange, onChartReady, onOpenKnowledge }) {
   const chartContainerRef = useRef(null)
   const volumeChartContainerRef = useRef(null) // 中间成交量图表容器
   const lowerChartContainerRef = useRef(null) // 下方指标图表容器
@@ -59,17 +60,19 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
 
     let handleResize = null
     let handleChartClick = null
+    let resizeObserver = null
     const timerId = setTimeout(() => {
       if (!chartContainerRef.current) return
 
       try {
-        // 动态计算图表宽度 = 容器宽度
+        // 动态计算图表宽度和高度
         const containerWidth = chartContainerRef.current.clientWidth || 1000
+        const containerHeight = chartContainerRef.current.clientHeight || 500
 
         // 创建图表 (v3.8 API)
         const chart = createChart(chartContainerRef.current, {
           width: containerWidth,
-          height: 700,
+          height: containerHeight,
           layout: {
             backgroundColor: 'rgb(28, 28, 28)',
             textColor: '#d1d4dc',
@@ -227,15 +230,24 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
 
         chartContainerRef.current.addEventListener('click', handleChartClick)
 
-        // 响应式处理 - 动态调整图表宽度
+        // 响应式处理 - 动态调整图表宽度和高度
         handleResize = () => {
           if (chartContainerRef.current && chartRef.current) {
             const newWidth = chartContainerRef.current.clientWidth || 1000
-            chartRef.current.resize(newWidth, 700)
+            const newHeight = chartContainerRef.current.clientHeight || 500
+            chartRef.current.resize(newWidth, newHeight)
           }
         }
 
         window.addEventListener('resize', handleResize)
+
+        // 使用 ResizeObserver 监听容器大小变化（比 window resize 更精确）
+        if (typeof ResizeObserver !== 'undefined' && chartContainerRef.current) {
+          resizeObserver = new ResizeObserver(() => {
+            handleResize()
+          })
+          resizeObserver.observe(chartContainerRef.current)
+        }
       } catch (error) {
         console.error('Failed to create chart:', error)
       }
@@ -246,6 +258,9 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       clearTimeout(timerId)
       if (handleResize) {
         window.removeEventListener('resize', handleResize)
+      }
+      if (resizeObserver) {
+        resizeObserver.disconnect()
       }
       if (handleChartClick && chartContainerRef.current) {
         chartContainerRef.current.removeEventListener('click', handleChartClick)
@@ -258,7 +273,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       setIsChartReady(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [height])
+  }, [])
 
   // 初始化下方技术指标图表
   useEffect(() => {
@@ -844,10 +859,16 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
         setSelectedData(latestData)
         lastClickedDataRef.current = latestData
       }
+
+      // 通知父组件图表渲染完成
+      // 延迟一小段时间确保所有渲染都完成
+      setTimeout(() => {
+        onChartReady?.()
+      }, 150)
     } catch (error) {
       console.error('Failed to set chart data:', error)
     }
-  }, [data, isChartReady])
+  }, [data, isChartReady, onChartReady])
 
   // 更新成交量数据（现在在第一张图中）
   useEffect(() => {
@@ -2870,8 +2891,8 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
           <div
             ref={chartContainerRef}
             style={{
-                            width: '100%',
-              height: '700px',
+              width: '100%',
+              height: '100%',
             }}
           />
         </div>
