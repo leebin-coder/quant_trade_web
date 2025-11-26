@@ -1265,6 +1265,12 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     }}
                   >
                   <Popover
+                      overlayInnerStyle={{
+                        backgroundColor: '#1f1f1f',
+                        color: '#ffffff',
+                        border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
+                      }}
                       content={
                         <div style={{ minWidth: '450px', maxWidth: '500px' }}>
                           <div

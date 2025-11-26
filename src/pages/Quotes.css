@@ -87,33 +87,23 @@
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Tab Bar 行：包含开灯/关灯Tab和交易数据Tabs */
+/* Tab Bar 行：包含交易数据Tabs */
 .tabs-bar-container {
   display: flex;
   align-items: flex-end; /* 底部对齐 */
-  justify-content: center; /* 整体居中 */
+  justify-content: flex-end; /* 固定在右边 */
   position: relative;
   padding: 0; /* 移除padding，让tab紧贴边缘 */
   background: rgb(8, 8, 8);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 收起/展开Tab容器 - 从左侧到交易数据Tab左侧 */
-.toggle-tab-wrapper {
-  flex: 1; /* 占据剩余空间 */
-  display: flex;
-  align-items: flex-end;
-  margin-right: 16px; /* 与第一个交易数据tab的间距 */
-  z-index: 0; /* 在交易数据tabs下方 */
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 交易数据Tabs容器 - 不再需要margin-left */
+/* 交易数据Tabs容器 - 固定在右边 */
 .data-tabs-wrapper {
   display: flex;
   align-items: center;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 2; /* 确保在收起/展开tab之上 */
+  z-index: 2;
   position: relative;
   flex-shrink: 0; /* 不允许压缩 */
 }
@@ -409,12 +399,3 @@
   height: 8px;
 }
 
-/* 关灯模式 - 顶部无间距 */
-.quotes-container.lights-off {
-  padding-top: 0;
-}
-
-.quotes-container.lights-off .module-content {
-  margin-top: 0;
-  padding-top: 0;
-}

@@ -10,7 +10,6 @@ import './Quotes.css'
 function Quotes() {
   const { openKnowledge } = useKnowledgeBase()
   const [mainModule, setMainModule] = useState('stock') // 主模块: overview, stock, sector, capital, sentiment
-  const [lightsOn, setLightsOn] = useState(true) // 开灯/关灯状态
   const [activeKey, setActiveKey] = useState('trading')
   const [selectedStock, setSelectedStock] = useState(null)
   const [companyDetail, setCompanyDetail] = useState(null) // 公司详情数据
@@ -251,22 +250,10 @@ function Quotes() {
     }
   }, [selectedStock])
 
-  // 关灯时添加全局类名到body，用于隐藏顶部Header
-  useEffect(() => {
-    if (!lightsOn) {
-      document.body.classList.add('lights-off-mode')
-    } else {
-      document.body.classList.remove('lights-off-mode')
-    }
-    return () => {
-      document.body.classList.remove('lights-off-mode')
-    }
-  }, [lightsOn])
-
   return (
-    <div className={`quotes-container ${!lightsOn ? 'lights-off' : ''}`}>
+    <div className="quotes-container">
       {/* 顶部五大模块切换 */}
-      <div className={`main-modules ${!lightsOn ? 'hidden' : ''}`}>
+      <div className="main-modules">
         {mainModules.map(module => (
           <div
             key={module.key}
@@ -288,19 +275,9 @@ function Quotes() {
 
             {/* 右侧：Tab Bar + 内容 */}
             <div className="quotes-tabs-wrapper">
-              {/* Tab Bar 容器：包含居中的开灯/关灯Tab和右侧的交易数据Tabs */}
+              {/* Tab Bar 容器 */}
               <div className="tabs-bar-container">
-                {/* 收起/展开Tab - 居中 */}
-                <div className="toggle-tab-wrapper">
-                  <div
-                    className={`toggle-tab glass-effect ${lightsOn ? 'collapsed' : 'expanded'}`}
-                    onClick={() => setLightsOn(!lightsOn)}
-                    title={lightsOn ? '收起' : '展开'}
-                  >
-                  </div>
-                </div>
-
-                {/* 交易数据Tabs - 右侧 */}
+                {/* 交易数据Tabs */}
                 <div className="data-tabs-wrapper">
                   <div className="data-tabs-nav">
                     {tabItems.map(item => (

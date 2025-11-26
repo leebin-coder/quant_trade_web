@@ -1,6 +1,6 @@
-# MACD (Moving Average Convergence Divergence)
+# MACD 
 
-MACD指标是查拉尔·阿佩尔(Gerald Appel)于1979年提出的，是一种趋势追踪动量指标。
+MACD(**Moving Average Convergence Divergence**) 指标是查拉尔·阿佩尔(Gerald Appel)于1979年提出的，是一种趋势追踪动量指标。
 
 ## 计算方法
 
