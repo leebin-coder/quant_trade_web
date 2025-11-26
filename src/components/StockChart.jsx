@@ -832,7 +832,15 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
 
   // 更新数据
   useEffect(() => {
-    if (!isChartReady || !candlestickSeriesRef.current || !data || data.length === 0) {
+    if (!isChartReady || !candlestickSeriesRef.current) {
+      return
+    }
+
+    // 如果没有数据，也要通知父组件图表已经准备好（避免一直加载）
+    if (!data || data.length === 0) {
+      setTimeout(() => {
+        onChartReady?.()
+      }, 150)
       return
     }
 
@@ -867,6 +875,8 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       }, 150)
     } catch (error) {
       console.error('Failed to set chart data:', error)
+      // 即使出错也要通知完成，避免一直加载
+      onChartReady?.()
     }
   }, [data, isChartReady, onChartReady])
 
@@ -1258,7 +1268,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
   }, [lowerIndicator, data, isChartReady])
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* 标题和控制器行 */}
       {title && (
         <div
@@ -2253,9 +2263,9 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       )}
 
       {/* 图表和数据看板容器 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '40px', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '40px', width: '100%', flex: 1, minHeight: 0, boxSizing: 'border-box' }}>
         {/* 图表区域 - 自适应宽度 */}
-        <div style={{ minWidth: 0, position: 'relative' }}>
+        <div style={{ minWidth: 0, position: 'relative', height: '100%' }}>
           {/* 技术指标选择器 - 左上角 */}
           <div
             style={{
