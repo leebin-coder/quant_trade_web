@@ -394,44 +394,27 @@ function Quotes() {
                       {item.key === 'trading' ? (
                         // 交易数据Tab - 显示K线图和看板
                         selectedStock ? (
-                          loading ? (
-                            // 加载中 - 显示四色渐变文字
-                            <div className="tab-content-placeholder">
-                              <div className="loading-text">{item.label}</div>
-                            </div>
-                          ) : chartData.length > 0 ? (
-                            <div className="trading-content-layout">
-                              {/* 上方图表区域 - 动态高度 */}
-                              <div className="chart-area">
-                                <StockChart
-                                  data={chartData}
-                                  title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
-                                  stockInfo={selectedStock}
-                                  companyDetail={companyDetail}
-                                  period={period}
-                                  onPeriodChange={handlePeriodChange}
-                                  adjustFlag={adjustFlag}
-                                  onAdjustFlagChange={handleAdjustFlagChange}
-                                  onChartReady={handleChartReady}
-                                  onOpenKnowledge={openKnowledge}
-                                />
+                          chartData.length > 0 || loading ? (
+                            loading && chartData.length === 0 ? (
+                              // 加载中 - 显示四色渐变文字
+                              <div className="tab-content-placeholder">
+                                <div className="loading-text">{item.label}</div>
                               </div>
-                              {/* 下方看板区域 - 固定300px */}
-                              <div className="dashboard-area">
-                                <div className="dashboard-content">
-                                  {/* 看板内容 */}
-                                  <div style={{
-                                    color: '#ffffff',
-                                    fontSize: '18px',
-                                    fontWeight: '600',
-                                    textAlign: 'center',
-                                    paddingTop: '130px'
-                                  }}>
-                                    数据看板区域
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
+                            ) : (
+                              <StockChart
+                                data={chartData}
+                                title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
+                                stockInfo={selectedStock}
+                                companyDetail={companyDetail}
+                                period={period}
+                                onPeriodChange={handlePeriodChange}
+                                adjustFlag={adjustFlag}
+                                onAdjustFlagChange={handleAdjustFlagChange}
+                                onChartReady={handleChartReady}
+                                onOpenKnowledge={openKnowledge}
+                                loading={loading}
+                              />
+                            )
                           ) : (
                             // 无数据 - 显示Empty组件
                             <div className="tab-content-placeholder">
