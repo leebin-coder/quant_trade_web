@@ -394,27 +394,30 @@ function Quotes() {
                       {item.key === 'trading' ? (
                         // 交易数据Tab - 显示K线图和看板
                         selectedStock ? (
-                          loading ? (
-                            // 加载中 - 显示四色渐变文字
-                            <div className="tab-content-placeholder">
-                              <div className="loading-text">{item.label}</div>
-                            </div>
-                          ) : chartData.length > 0 ? (
+                          chartData.length > 0 || loading ? (
                             <div className="trading-content-layout">
                               {/* 上方图表区域 - 动态高度 */}
                               <div className="chart-area">
-                                <StockChart
-                                  data={chartData}
-                                  title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
-                                  stockInfo={selectedStock}
-                                  companyDetail={companyDetail}
-                                  period={period}
-                                  onPeriodChange={handlePeriodChange}
-                                  adjustFlag={adjustFlag}
-                                  onAdjustFlagChange={handleAdjustFlagChange}
-                                  onChartReady={handleChartReady}
-                                  onOpenKnowledge={openKnowledge}
-                                />
+                                {loading && chartData.length === 0 ? (
+                                  // 加载中 - 显示四色渐变文字
+                                  <div className="tab-content-placeholder">
+                                    <div className="loading-text">{item.label}</div>
+                                  </div>
+                                ) : (
+                                  <StockChart
+                                    data={chartData}
+                                    title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
+                                    stockInfo={selectedStock}
+                                    companyDetail={companyDetail}
+                                    period={period}
+                                    onPeriodChange={handlePeriodChange}
+                                    adjustFlag={adjustFlag}
+                                    onAdjustFlagChange={handleAdjustFlagChange}
+                                    onChartReady={handleChartReady}
+                                    onOpenKnowledge={openKnowledge}
+                                    loading={loading}
+                                  />
+                                )}
                               </div>
                               {/* 下方看板区域 - 固定300px */}
                               <div className="dashboard-area">

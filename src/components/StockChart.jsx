@@ -19,9 +19,10 @@ import './StockChart.css'
  * @param {Number} props.adjustFlag - 复权类型: 1-后复权, 2-前复权, 3-不复权
  * @param {Function} props.onAdjustFlagChange - 复权类型变化回调
  * @param {Function} props.onChartReady - 图表渲染完成回调
+ * @param {Boolean} props.loading - 是否正在加载数据
  * @param {Function} props.onOpenKnowledge - 打开知识库回调，参数为文档节点ID
  */
-function StockChart({ data = [], height = 600, title = '', stockInfo = null, companyDetail = null, period = 'daily', onPeriodChange, adjustFlag = 3, onAdjustFlagChange, onChartReady, onOpenKnowledge }) {
+function StockChart({ data = [], height = 600, title = '', stockInfo = null, companyDetail = null, period = 'daily', onPeriodChange, adjustFlag = 3, onAdjustFlagChange, onChartReady, loading = false, onOpenKnowledge }) {
   const chartContainerRef = useRef(null)
   const volumeChartContainerRef = useRef(null) // 中间成交量图表容器
   const lowerChartContainerRef = useRef(null) // 下方指标图表容器
@@ -1282,7 +1283,38 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
   }, [lowerIndicator, data, isChartReady])
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      {/* 加载遮罩层 */}
+      {loading && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(28, 28, 28, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          backdropFilter: 'blur(4px)',
+        }}>
+          <div style={{
+            fontSize: '18px',
+            fontWeight: '500',
+            background: 'linear-gradient(90deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.25) 40%, rgba(255, 255, 255, 0.9) 50%, rgba(255, 255, 255, 0.25) 60%, rgba(255, 255, 255, 0.25) 100%)',
+            backgroundSize: '200% 100%',
+            backgroundPosition: '-100% 0',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            animation: 'shimmer 1.8s ease-in-out infinite',
+          }}>
+            加载中...
+          </div>
+        </div>
+      )}
+
       {/* 标题和控制器行 */}
       {title && (
         <div
