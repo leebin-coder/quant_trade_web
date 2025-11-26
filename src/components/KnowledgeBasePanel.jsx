@@ -56,7 +56,21 @@ const findFirstNodeWithUrl = (nodes) => {
   return null
 }
 
-function KnowledgeBasePanel({ visible, onClose }) {
+// 递归查找指定ID的节点
+const findNodeById = (nodes, targetId) => {
+  for (const node of nodes) {
+    if (node.id === targetId) {
+      return node
+    }
+    if (node.children) {
+      const found = findNodeById(node.children, targetId)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+function KnowledgeBasePanel({ visible, targetNodeId, onClose }) {
   const [selectedNode, setSelectedNode] = useState(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [currentKB, setCurrentKB] = useState('system')
@@ -77,15 +91,24 @@ function KnowledgeBasePanel({ visible, onClose }) {
   const currentKBConfig = knowledgeBases.find(kb => kb.key === currentKB)?.config || knowledgeBaseConfig
   const currentKBLabel = knowledgeBases.find(kb => kb.key === currentKB)?.label || '系统知识库'
 
-  // 打开面板时自动选中第一个节点
+  // 打开面板时根据 targetNodeId 或选中第一个节点
   useEffect(() => {
-    if (visible && !selectedNode) {
-      const firstNode = findFirstNodeWithUrl(currentKBConfig)
-      if (firstNode) {
-        setSelectedNode(firstNode)
+    if (visible) {
+      if (targetNodeId) {
+        // 如果指定了目标节点ID，查找并选中该节点
+        const targetNode = findNodeById(currentKBConfig, targetNodeId)
+        if (targetNode) {
+          setSelectedNode(targetNode)
+        }
+      } else if (!selectedNode) {
+        // 否则选中第一个有URL的节点
+        const firstNode = findFirstNodeWithUrl(currentKBConfig)
+        if (firstNode) {
+          setSelectedNode(firstNode)
+        }
       }
     }
-  }, [visible, currentKB])
+  }, [visible, targetNodeId, currentKB])
 
   // 重置状态当面板关闭时
   useEffect(() => {

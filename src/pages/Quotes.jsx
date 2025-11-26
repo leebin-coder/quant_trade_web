@@ -4,9 +4,11 @@ import StockSelector from '../components/StockSelector'
 import StockChart from '../components/StockChart'
 import MarketOverview from '../components/MarketOverview'
 import { stockDailyAPI, stockCompanyAPI } from '../services/api'
+import { useKnowledgeBase } from '../contexts/KnowledgeBaseContext'
 import './Quotes.css'
 
 function Quotes() {
+  const { openKnowledge } = useKnowledgeBase()
   const [mainModule, setMainModule] = useState('stock') // 主模块: overview, stock, sector, capital, sentiment
   const [activeKey, setActiveKey] = useState('trading')
   const [selectedStock, setSelectedStock] = useState(null)
@@ -301,6 +303,7 @@ function Quotes() {
                               companyDetail={companyDetail}
                               period={period}
                               onPeriodChange={handlePeriodChange}
+                              onOpenKnowledge={openKnowledge}
                             />
                           ) : (
                             // 无数据 - 显示Empty组件

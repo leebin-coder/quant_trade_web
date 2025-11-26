@@ -40,8 +40,8 @@ const menuItems = [
   },
 ]
 
-function MainLayout() {
-  const [showKnowledgeBase, setShowKnowledgeBase] = useState(false)
+function MainLayoutInner() {
+  const { visible, targetNodeId, openKnowledge, closeKnowledge } = useKnowledgeBase()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -143,7 +143,7 @@ function MainLayout() {
             <TradingCalendar />
             <div
               className="knowledge-base-btn"
-              onClick={() => setShowKnowledgeBase(true)}
+              onClick={() => openKnowledge()}
               title="知识库"
             >
               <BookOutlined style={{ fontSize: '18px' }} />
@@ -208,10 +208,19 @@ function MainLayout() {
 
       {/* 知识库面板 */}
       <KnowledgeBasePanel
-        visible={showKnowledgeBase}
-        onClose={() => setShowKnowledgeBase(false)}
+        visible={visible}
+        targetNodeId={targetNodeId}
+        onClose={closeKnowledge}
       />
     </Layout>
+  )
+}
+
+function MainLayout() {
+  return (
+    <KnowledgeBaseProvider>
+      <MainLayoutInner />
+    </KnowledgeBaseProvider>
   )
 }
 
