@@ -2,7 +2,7 @@
 .stock-selector {
   position: fixed;
   left: 8px;
-  top: 136px; /* 导航栏48px + 8px间距 */
+  top: 128px; /* 导航栏48px + 主模块切换48px + Tab Bar 12px padding */
   bottom: 8px; /* 与展示区域底部间距保持一致 */
   width: 240px;
   background: rgb(28, 28, 28);
@@ -13,6 +13,12 @@
   flex-direction: column;
   overflow: hidden;
   z-index: 100;
+  transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 关灯模式下，股票选择器顶到最上面 */
+body.lights-off-mode .stock-selector {
+  top: 32px; /* 顶部8px间距 */
 }
 
 /* 顶部切换按钮 */

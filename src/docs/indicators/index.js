@@ -10,6 +10,7 @@ import WR_MD from './WR.md?raw'
 import DMI_MD from './DMI.md?raw'
 import CCI_MD from './CCI.md?raw'
 import BIAS_MD from './BIAS.md?raw'
+import ADJUST_MD from './ADJUST.md?raw'
 
 // 指标文档映射配置
 export const indicatorDescriptions = {
@@ -26,6 +27,9 @@ export const indicatorDescriptions = {
   DMI: DMI_MD,
   CCI: CCI_MD,
   BIAS: BIAS_MD,
+  ADJUST_NONE: ADJUST_MD,
+  ADJUST_QFQ: ADJUST_MD,
+  ADJUST_HFQ: ADJUST_MD,
 }
 
 // 指标知识库文档节点 ID 配置
@@ -43,6 +47,9 @@ export const indicatorDocsId = {
   DMI: 'indicator_dmi',
   CCI: 'indicator_cci',
   BIAS: 'indicator_bias',
+  ADJUST_NONE: 'indicator_adjust',
+  ADJUST_QFQ: 'indicator_adjust',
+  ADJUST_HFQ: 'indicator_adjust',
 }
 
 // 弹出框统一配置

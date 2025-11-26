@@ -14,6 +14,16 @@
   align-items: center;
   gap: 12px;
   background: rgb(8, 8, 8);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 48px;
+  overflow: hidden;
+  opacity: 1;
+}
+
+.main-modules.hidden {
+  height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none;
 }
 
 .module-tab {
@@ -49,6 +59,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 个股模块布局 */
@@ -57,9 +68,10 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Tab Bar - 右对齐 */
+/* Tab Bar 容器 */
 .quotes-tabs-wrapper {
   position: sticky;
   top: 0;
@@ -68,10 +80,118 @@
   margin: 0 8px 0 256px; /* 为左侧股票选择器留出空间 (8px左边距 + 240px宽度 + 8px间距) */
   padding: 0;
   display: flex;
-  justify-content: flex-end; /* 改为右对齐 */
+  flex-direction: column;
   flex: 1;
   min-height: 0;
   overflow: visible; /* 确保tab内容不被裁剪 */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tab Bar 行：包含开灯/关灯Tab和交易数据Tabs */
+.tabs-bar-container {
+  display: flex;
+  align-items: flex-end; /* 底部对齐 */
+  justify-content: center; /* 整体居中 */
+  position: relative;
+  padding: 0; /* 移除padding，让tab紧贴边缘 */
+  background: rgb(8, 8, 8);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 收起/展开Tab容器 - 从左侧到交易数据Tab左侧 */
+.toggle-tab-wrapper {
+  flex: 1; /* 占据剩余空间 */
+  display: flex;
+  align-items: flex-end;
+  margin-right: 16px; /* 与第一个交易数据tab的间距 */
+  z-index: 0; /* 在交易数据tabs下方 */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 交易数据Tabs容器 - 不再需要margin-left */
+.data-tabs-wrapper {
+  display: flex;
+  align-items: center;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 2; /* 确保在收起/展开tab之上 */
+  position: relative;
+  flex-shrink: 0; /* 不允许压缩 */
+}
+
+/* 交易数据Tabs导航 */
+.data-tabs-nav {
+  display: flex;
+  gap: 0;
+  align-items: center;
+}
+
+/* 交易数据Tab */
+.data-tab {
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #ffffff !important;
+  background: rgb(20, 20, 20);
+  border-radius: 4px 4px 0 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  margin: 0 !important;
+  margin-right: 16px !important;
+  text-align: center;
+  outline: none;
+  cursor: pointer;
+  box-shadow:
+    -3px -3px 6px rgba(0, 0, 0, 0.18),
+    3px -3px 6px rgba(0, 0, 0, 0.18);
+}
+
+.data-tab:last-child {
+  margin-right: 0 !important;
+}
+
+.data-tab:hover {
+  color: #ffffff !important;
+}
+
+.data-tab.active {
+  background: rgb(28, 28, 28);
+  margin-bottom: 0;
+  z-index: 2;
+  font-weight: 600;
+}
+
+.data-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: -1px;
+  right: -1px;
+  height: 4px;
+  background: rgb(28, 28, 28);
+  z-index: 3;
+}
+
+/* Tab内容容器 */
+.tab-content-container {
+  flex: 1;
+  overflow: auto;
+  background: rgb(8, 8, 8);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tab面板 */
+.tab-pane {
+  height: 100%;
+  overflow: hidden;
+}
+
+.tab-pane.hidden {
+  display: none;
+}
+
+.tab-pane.active {
+  display: block;
+  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 其他模块的占位符 */
@@ -95,100 +215,6 @@
   overflow: auto;
 }
 
-/* Tabs 样式 */
-.quotes-tabs {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.quotes-tabs .ant-tabs-nav {
-  margin-bottom: 0;
-  flex-shrink: 0;
-  position: relative;
-  padding: 12px 0 0 0; /* 移除左边距，让tab能完整显示 */
-  overflow: visible; /* 确保tab不被裁剪 */
-  display: flex;
-  justify-content: flex-end; /* nav整体靠右 */
-}
-
-.quotes-tabs .ant-tabs-nav::before {
-  display: none;
-}
-
-.quotes-tabs .ant-tabs-nav-list {
-  justify-content: flex-end; /* tab列表靠右对齐 */
-  gap: 0;
-  flex-shrink: 0; /* 防止tab被压缩 */
-  margin-left: auto; /* 强制靠右 */
-}
-
-.quotes-tabs .ant-tabs-tab {
-  padding: 6px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #ffffff !important;
-  background: rgb(20, 20, 20);
-  border-radius: 4px 4px 0 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  margin: 0 !important;
-  margin-right: 16px !important; /* 改为右边距，让tab从右向左排列 */
-  text-align: center;
-  outline: none;
-  box-shadow:
-    -3px -3px 6px rgba(0, 0, 0, 0.18),
-    3px -3px 6px rgba(0, 0, 0, 0.18);
-}
-
-.quotes-tabs .ant-tabs-tab:last-child {
-  margin-right: 0 !important; /* 最后一个tab不需要右边距 */
-}
-
-.quotes-tabs .ant-tabs-tab:hover {
-  color: #ffffff !important;
-}
-
-.quotes-tabs .ant-tabs-tab:focus,
-.quotes-tabs .ant-tabs-tab:active {
-  outline: none;
-}
-
-.quotes-tabs .ant-tabs-tab-active {
-  background: rgb(28, 28, 28);
-  margin-bottom: 0;
-  z-index: 2;
-}
-
-.quotes-tabs .ant-tabs-tab-active::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: -1px;
-  right: -1px;
-  height: 4px;
-  background: rgb(28, 28, 28);
-  z-index: 3;
-}
-
-.quotes-tabs .ant-tabs-tab-active:hover {
-  color: #ffffff !important;
-}
-
-.quotes-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
-  color: #ffffff !important;
-  font-weight: 600;
-}
-
-.quotes-tabs .ant-tabs-ink-bar {
-  display: none;
-}
-
-.quotes-tabs .ant-tabs-content-holder {
-  flex: 1;
-  overflow: auto;
-}
 
 /* Tab 内容区域 */
 .tab-content {
@@ -316,4 +342,79 @@
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* 收起/展开Tab - 玻璃特效 */
+.toggle-tab {
+  padding: 0;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 4px 4px 0 0; /* 上方圆角 */
+  width: 100%; /* 填充全部宽度 */
+  height: 12px;
+}
+
+/* 玻璃特效基础 */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: none; /* 移除所有边框 */
+  box-shadow:
+    0 -2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 2px rgba(255, 255, 255, 0.2),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 展开状态（收起的界面，lightsOn=true）- 悬浮和点击增加亮度，发光效果 */
+.glass-effect.expanded:hover {
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow:
+    0 -3px 16px rgba(255, 255, 255, 0.3),
+    0 0 20px rgba(255, 255, 255, 0.4),
+    inset 0 1px 4px rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 1);
+  height: 14px;
+}
+
+.glass-effect.expanded:active {
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 -4px 20px rgba(255, 255, 255, 0.4),
+    0 0 30px rgba(255, 255, 255, 0.5),
+    inset 0 1px 6px rgba(255, 255, 255, 0.6);
+  height: 16px;
+}
+
+/* 收起状态（展开的界面，lightsOn=false）- 悬浮和点击特效变暗淡 */
+.glass-effect.collapsed:hover {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 -2px 6px rgba(0, 0, 0, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  height: 10px;
+}
+
+.glass-effect.collapsed:active {
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 -1px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  height: 8px;
+}
+
+/* 关灯模式 - 顶部无间距 */
+.quotes-container.lights-off {
+  padding-top: 0;
+}
+
+.quotes-container.lights-off .module-content {
+  margin-top: 0;
+  padding-top: 0;
 }

@@ -43,6 +43,11 @@ export const knowledgeBaseConfig = [
                 url: "https://www.yuque.com/u32034952/wxggbp/indicators?singleDoc#",
                 children: [
                     {
+                        id: 'indicator_adjust',
+                        title: '复权处理',
+                        url: "https://www.yuque.com/u32034952/wxggbp/indicator-adjust?singleDoc#"
+                    },
+                    {
                         id: 'indicator_ma',
                         title: 'MA (移动平均线)',
                         url: "https://www.yuque.com/u32034952/wxggbp/indicator-ma?singleDoc#"

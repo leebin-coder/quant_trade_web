@@ -33,7 +33,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
   const [isChartReady, setIsChartReady] = useState(false)
   const [isVolumeChartReady, setIsVolumeChartReady] = useState(false) // 中间成交量图表是否准备好
   const [isLowerChartReady, setIsLowerChartReady] = useState(false) // 下方图表是否准备好
-  const [adjustType, setAdjustType] = useState('none') // 复权类型: none-未复权, qfq-前复权, hfq-后复权
+  const [adjustType, setAdjustType] = useState('qfq') // 复权类型: none-未复权, qfq-前复权, hfq-后复权
   const [selectedData, setSelectedData] = useState(null) // 当前悬停或选中的K线数据
   const [indicators, setIndicators] = useState([]) // 选中的上方技术指标
   const [lowerIndicator, setLowerIndicator] = useState('KDJ') // 选中的下方技术指标,默认选中KDJ(单选)
@@ -1236,9 +1236,9 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
           }}
         >
           {/* 左侧：标题和控制器组 */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0 }}>
-            {/* 标题和股票信息图标 */}
-            <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
+            {/* 第一行：标题和数据展示 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flex: 1, minWidth: 0 }}>
               <div
                 style={{
                   fontSize: '28px',
@@ -1247,6 +1247,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                   display: 'flex',
                   alignItems: 'center',
                   gap: '12px',
+                  flexShrink: 0,
                 }}
               >
                 <span>{title}</span>
@@ -1678,10 +1679,236 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                   </ConfigProvider>
                 )}
               </div>
+
+              {/* 横向展示K线数据 */}
+              {displayData && (
+                <div
+                  className="stock-data-display"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    fontSize: '12px',
+                    flex: 1,
+                    minWidth: '900px',
+                    overflowX: 'auto',
+                    overflowY: 'hidden',
+                    paddingBottom: '4px'
+                  }}
+                >
+                  {/* 日期 */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexShrink: 0 }}>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.95)', fontWeight: '600', fontSize: '13px' }}>{displayData.time}</span>
+                  </div>
+
+                  {/* 开盘 */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>开</span>
+                    <span style={{
+                      color: displayData.previousClose
+                        ? displayData.open > displayData.previousClose ? '#ef232a'
+                        : displayData.open < displayData.previousClose ? '#14b143'
+                        : '#ffffff'
+                        : '#ffffff',
+                      fontWeight: '500',
+                      fontSize: '12px'
+                    }}>{displayData.open.toFixed(2)}</span>
+                  </div>
+
+                  {/* 收盘 */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>收</span>
+                    <span style={{
+                      color: displayData.previousClose
+                        ? displayData.close > displayData.previousClose ? '#ef232a'
+                        : displayData.close < displayData.previousClose ? '#14b143'
+                        : '#ffffff'
+                        : '#ffffff',
+                      fontWeight: '500',
+                      fontSize: '12px'
+                    }}>{displayData.close.toFixed(2)}</span>
+                  </div>
+
+                  {/* 最高 */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>高</span>
+                    <span style={{
+                      color: displayData.previousClose
+                        ? displayData.high > displayData.previousClose ? '#ef232a'
+                        : displayData.high < displayData.previousClose ? '#14b143'
+                        : '#ffffff'
+                        : '#ffffff',
+                      fontWeight: '500',
+                      fontSize: '12px'
+                    }}>{displayData.high.toFixed(2)}</span>
+                  </div>
+
+                  {/* 最低 */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>低</span>
+                    <span style={{
+                      color: displayData.previousClose
+                        ? displayData.low > displayData.previousClose ? '#ef232a'
+                        : displayData.low < displayData.previousClose ? '#14b143'
+                        : '#ffffff'
+                        : '#ffffff',
+                      fontWeight: '500',
+                      fontSize: '12px'
+                    }}>{displayData.low.toFixed(2)}</span>
+                  </div>
+
+                  {/* 涨幅 */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>涨幅</span>
+                    <span style={{
+                      color: displayData.changePercent > 0 ? '#ef232a'
+                        : displayData.changePercent < 0 ? '#14b143'
+                        : '#666',
+                      fontWeight: '600',
+                      fontSize: '12px'
+                    }}>
+                      {displayData.changePercent > 0 ? '+' : ''}{displayData.changePercent.toFixed(2)}%
+                    </span>
+                  </div>
+
+                  {/* 涨幅金额 */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>涨跌</span>
+                    <span style={{
+                      color: displayData.changeAmount > 0 ? '#ef232a'
+                        : displayData.changeAmount < 0 ? '#14b143'
+                        : '#666',
+                      fontWeight: '500',
+                      fontSize: '12px'
+                    }}>
+                      {displayData.changeAmount > 0 ? '+' : ''}{displayData.changeAmount.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* 成交量 */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>量</span>
+                    <span style={{
+                      color: displayData.close > displayData.open ? '#ef232a'
+                        : displayData.close < displayData.open ? '#14b143'
+                        : '#ffffff',
+                      fontWeight: '500',
+                      fontSize: '12px'
+                    }}>{(displayData.volume / 10000).toFixed(2)}万手</span>
+                  </div>
+
+                  {/* 成交额 */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>额</span>
+                    <span style={{
+                      color: displayData.close > displayData.open ? '#ef232a'
+                        : displayData.close < displayData.open ? '#14b143'
+                        : '#ffffff',
+                      fontWeight: '500',
+                      fontSize: '12px'
+                    }}>{(displayData.volume * displayData.close / 100000000).toFixed(2)}亿</span>
+                  </div>
+
+                  {/* 技术指标数据 */}
+                  {lowerIndicator && (() => {
+                    const dataIndex = data.findIndex(d => d.time === displayData.time)
+                    if (dataIndex === -1) return null
+
+                    if (lowerIndicator === 'KDJ') {
+                      const kdjData = calculateKDJ(data, 9, 3, 3)
+                      const kVal = kdjData.k[dataIndex]?.value
+                      const dVal = kdjData.d[dataIndex]?.value
+                      const jVal = kdjData.j[dataIndex]?.value
+                      return (
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                            <span style={{ color: '#2196F3', fontSize: '10px', fontWeight: '500' }}>K:{kVal ? kVal.toFixed(2) : '--'}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                            <span style={{ color: '#FF9800', fontSize: '10px', fontWeight: '500' }}>D:{dVal ? dVal.toFixed(2) : '--'}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                            <span style={{ color: '#9C27B0', fontSize: '10px', fontWeight: '500' }}>J:{jVal ? jVal.toFixed(2) : '--'}</span>
+                          </div>
+                        </>
+                      )
+                    } else if (lowerIndicator === 'MACD') {
+                      const macdData = calculateMACD(data, 12, 26, 9)
+                      const difVal = macdData.dif[dataIndex]?.value
+                      const deaVal = macdData.dea[dataIndex]?.value
+                      const macdVal = macdData.macd[dataIndex]?.value
+                      return (
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                            <span style={{ color: '#2196F3', fontSize: '10px', fontWeight: '500' }}>DIF:{difVal !== null && difVal !== undefined ? difVal.toFixed(4) : '--'}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                            <span style={{ color: '#FF9800', fontSize: '10px', fontWeight: '500' }}>DEA:{deaVal !== null && deaVal !== undefined ? deaVal.toFixed(4) : '--'}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                            <span style={{ color: macdVal !== null && macdVal !== undefined && macdVal > 0 ? '#ef232a' : '#14b143', fontSize: '10px', fontWeight: '500' }}>MACD:{macdVal !== null && macdVal !== undefined ? macdVal.toFixed(4) : '--'}</span>
+                          </div>
+                        </>
+                      )
+                    } else if (lowerIndicator === 'RSI') {
+                      const rsiData = calculateRSI(data, 14)
+                      const rsiVal = rsiData[dataIndex]?.value
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                          <span style={{ color: '#2196F3', fontSize: '10px', fontWeight: '500' }}>RSI:{rsiVal ? rsiVal.toFixed(2) : '--'}</span>
+                        </div>
+                      )
+                    } else if (lowerIndicator === 'WR') {
+                      const wrData = calculateWR(data, 14)
+                      const wrVal = wrData[dataIndex]?.value
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                          <span style={{ color: '#2196F3', fontSize: '10px', fontWeight: '500' }}>WR:{wrVal ? wrVal.toFixed(2) : '--'}</span>
+                        </div>
+                      )
+                    } else if (lowerIndicator === 'DMI') {
+                      const dmiData = calculateDMI(data, 14)
+                      const pdiVal = dmiData.pdi[dataIndex]?.value
+                      const mdiVal = dmiData.mdi[dataIndex]?.value
+                      const adxVal = dmiData.adx[dataIndex]?.value
+                      return (
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                            <span style={{ color: '#2196F3', fontSize: '10px', fontWeight: '500' }}>PDI:{pdiVal ? pdiVal.toFixed(2) : '--'}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                            <span style={{ color: '#FF9800', fontSize: '10px', fontWeight: '500' }}>MDI:{mdiVal ? mdiVal.toFixed(2) : '--'}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                            <span style={{ color: '#9C27B0', fontSize: '10px', fontWeight: '500' }}>ADX:{adxVal ? adxVal.toFixed(2) : '--'}</span>
+                          </div>
+                        </>
+                      )
+                    } else if (lowerIndicator === 'CCI') {
+                      const cciData = calculateCCI(data, 14)
+                      const cciVal = cciData[dataIndex]?.value
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                          <span style={{ color: '#2196F3', fontSize: '10px', fontWeight: '500' }}>CCI:{cciVal ? cciVal.toFixed(2) : '--'}</span>
+                        </div>
+                      )
+                    } else if (lowerIndicator === 'BIAS') {
+                      const biasData = calculateBIAS(data, 6)
+                      const biasVal = biasData[dataIndex]?.value
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
+                          <span style={{ color: '#2196F3', fontSize: '10px', fontWeight: '500' }}>BIAS:{biasVal ? biasVal.toFixed(2) : '--'}%</span>
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
+                </div>
+              )}
             </div>
 
-            {/* 控制器组 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* 第二行：控制器组（靠右） */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'flex-end' }}>
             {/* 时间周期选择器 */}
             <ConfigProvider
               theme={{
@@ -1844,7 +2071,36 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     color: adjustType === 'none' ? '#1890ff' : 'rgba(255, 255, 255, 0.65)',
                   }}
                 >
-                  不复权
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    不复权
+                    <Popover
+                      overlayInnerStyle={{
+                        backgroundColor: '#1f1f1f',
+                        color: '#ffffff',
+                        border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
+                      }}
+                      content={
+                        <div className="indicator-popover-wrapper">
+                          <button
+                            className="indicator-learn-more"
+                            onClick={() => onOpenKnowledge?.(indicatorDocsId.ADJUST_NONE)}
+                          >
+                            Learn More <RightOutlined style={{ fontSize: '10px' }} />
+                          </button>
+                          <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
+                            <ReactMarkdown>{indicatorDescriptions.ADJUST_NONE}</ReactMarkdown>
+                          </div>
+                        </div>
+                      }
+                      trigger="hover"
+                    >
+                      <QuestionCircleOutlined
+                        style={{ fontSize: '11px', cursor: 'help' }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </Popover>
+                  </span>
                 </Radio.Button>
                 <Radio.Button
                   value="qfq"
@@ -1861,7 +2117,36 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     color: adjustType === 'qfq' ? '#1890ff' : 'rgba(255, 255, 255, 0.65)',
                   }}
                 >
-                  前复权
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    前复权
+                    <Popover
+                      overlayInnerStyle={{
+                        backgroundColor: '#1f1f1f',
+                        color: '#ffffff',
+                        border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
+                      }}
+                      content={
+                        <div className="indicator-popover-wrapper">
+                          <button
+                            className="indicator-learn-more"
+                            onClick={() => onOpenKnowledge?.(indicatorDocsId.ADJUST_QFQ)}
+                          >
+                            Learn More <RightOutlined style={{ fontSize: '10px' }} />
+                          </button>
+                          <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
+                            <ReactMarkdown>{indicatorDescriptions.ADJUST_QFQ}</ReactMarkdown>
+                          </div>
+                        </div>
+                      }
+                      trigger="hover"
+                    >
+                      <QuestionCircleOutlined
+                        style={{ fontSize: '11px', cursor: 'help' }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </Popover>
+                  </span>
                 </Radio.Button>
                 <Radio.Button
                   value="hfq"
@@ -1878,7 +2163,36 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     color: adjustType === 'hfq' ? '#1890ff' : 'rgba(255, 255, 255, 0.65)',
                   }}
                 >
-                  后复权
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    后复权
+                    <Popover
+                      overlayInnerStyle={{
+                        backgroundColor: '#1f1f1f',
+                        color: '#ffffff',
+                        border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
+                      }}
+                      content={
+                        <div className="indicator-popover-wrapper">
+                          <button
+                            className="indicator-learn-more"
+                            onClick={() => onOpenKnowledge?.(indicatorDocsId.ADJUST_HFQ)}
+                          >
+                            Learn More <RightOutlined style={{ fontSize: '10px' }} />
+                          </button>
+                          <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
+                            <ReactMarkdown>{indicatorDescriptions.ADJUST_HFQ}</ReactMarkdown>
+                          </div>
+                        </div>
+                      }
+                      trigger="hover"
+                    >
+                      <QuestionCircleOutlined
+                        style={{ fontSize: '11px', cursor: 'help' }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </Popover>
+                  </span>
                 </Radio.Button>
               </Radio.Group>
             </ConfigProvider>
@@ -1946,6 +2260,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
                     }}
                     content={
                       <div className="indicator-popover-wrapper">
@@ -1953,7 +2268,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           className="indicator-learn-more" 
                           onClick={() => onOpenKnowledge?.(indicatorDocsId.MA5)}
                         >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
+                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
                         </button>
                         <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
                           <ReactMarkdown>{indicatorDescriptions.MA5}</ReactMarkdown>
@@ -1988,6 +2303,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
                     }}
                     content={
                       <div className="indicator-popover-wrapper">
@@ -1995,7 +2311,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           className="indicator-learn-more" 
                           onClick={() => onOpenKnowledge?.(indicatorDocsId.MA10)}
                         >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
+                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
                         </button>
                         <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
                           <ReactMarkdown>{indicatorDescriptions.MA10}</ReactMarkdown>
@@ -2030,6 +2346,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
                     }}
                     content={
                       <div className="indicator-popover-wrapper">
@@ -2037,7 +2354,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           className="indicator-learn-more" 
                           onClick={() => onOpenKnowledge?.(indicatorDocsId.MA20)}
                         >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
+                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
                         </button>
                         <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
                           <ReactMarkdown>{indicatorDescriptions.MA20}</ReactMarkdown>
@@ -2072,6 +2389,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
                     }}
                     content={
                       <div className="indicator-popover-wrapper">
@@ -2079,7 +2397,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           className="indicator-learn-more" 
                           onClick={() => onOpenKnowledge?.(indicatorDocsId.EMA12)}
                         >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
+                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
                         </button>
                         <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
                           <ReactMarkdown>{indicatorDescriptions.EMA12}</ReactMarkdown>
@@ -2114,6 +2432,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
                     }}
                     content={
                       <div className="indicator-popover-wrapper">
@@ -2121,7 +2440,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           className="indicator-learn-more" 
                           onClick={() => onOpenKnowledge?.(indicatorDocsId.EMA26)}
                         >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
+                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
                         </button>
                         <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
                           <ReactMarkdown>{indicatorDescriptions.EMA26}</ReactMarkdown>
@@ -2156,6 +2475,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
                     }}
                     content={
                       <div className="indicator-popover-wrapper">
@@ -2163,7 +2483,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           className="indicator-learn-more" 
                           onClick={() => onOpenKnowledge?.(indicatorDocsId.BOLL)}
                         >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
+                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
                         </button>
                         <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
                           <ReactMarkdown>{indicatorDescriptions.BOLL}</ReactMarkdown>
@@ -2234,6 +2554,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
                     }}
                     content={
                       <div className="indicator-popover-wrapper">
@@ -2241,7 +2562,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           className="indicator-learn-more" 
                           onClick={() => onOpenKnowledge?.(indicatorDocsId.KDJ)}
                         >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
+                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
                         </button>
                         <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
                           <ReactMarkdown>{indicatorDescriptions.KDJ}</ReactMarkdown>
@@ -2276,6 +2597,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
                     }}
                     content={
                       <div className="indicator-popover-wrapper">
@@ -2283,7 +2605,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           className="indicator-learn-more" 
                           onClick={() => onOpenKnowledge?.(indicatorDocsId.MACD)}
                         >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
+                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
                         </button>
                         <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
                           <ReactMarkdown>{indicatorDescriptions.MACD}</ReactMarkdown>
@@ -2318,6 +2640,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
                     }}
                     content={
                       <div className="indicator-popover-wrapper">
@@ -2325,7 +2648,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           className="indicator-learn-more" 
                           onClick={() => onOpenKnowledge?.(indicatorDocsId.RSI)}
                         >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
+                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
                         </button>
                         <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
                           <ReactMarkdown>{indicatorDescriptions.RSI}</ReactMarkdown>
@@ -2360,6 +2683,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
                     }}
                     content={
                       <div className="indicator-popover-wrapper">
@@ -2367,7 +2691,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           className="indicator-learn-more" 
                           onClick={() => onOpenKnowledge?.(indicatorDocsId.WR)}
                         >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
+                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
                         </button>
                         <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
                           <ReactMarkdown>{indicatorDescriptions.WR}</ReactMarkdown>
@@ -2402,6 +2726,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
                     }}
                     content={
                       <div className="indicator-popover-wrapper">
@@ -2409,7 +2734,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           className="indicator-learn-more" 
                           onClick={() => onOpenKnowledge?.(indicatorDocsId.DMI)}
                         >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
+                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
                         </button>
                         <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
                           <ReactMarkdown>{indicatorDescriptions.DMI}</ReactMarkdown>
@@ -2444,6 +2769,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
                     }}
                     content={
                       <div className="indicator-popover-wrapper">
@@ -2451,7 +2777,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           className="indicator-learn-more" 
                           onClick={() => onOpenKnowledge?.(indicatorDocsId.CCI)}
                         >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
+                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
                         </button>
                         <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
                           <ReactMarkdown>{indicatorDescriptions.CCI}</ReactMarkdown>
@@ -2486,6 +2812,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       backgroundColor: '#1f1f1f',
                       color: '#ffffff',
                       border: '1px solid #3a3a3a',
+                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
                     }}
                     content={
                       <div className="indicator-popover-wrapper">
@@ -2493,7 +2820,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           className="indicator-learn-more" 
                           onClick={() => onOpenKnowledge?.(indicatorDocsId.BIAS)}
                         >
-                          了解更多 <RightOutlined style={{ fontSize: '10px' }} />
+                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
                         </button>
                         <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
                           <ReactMarkdown>{indicatorDescriptions.BIAS}</ReactMarkdown>

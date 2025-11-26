@@ -10,10 +10,13 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-width: 1280px;
+  overflow-x: auto;
 }
 
 #root {
   min-height: 100vh;
+  min-width: 1280px;
 }
 
 /* 自定义滚动条 */
@@ -57,4 +60,35 @@ body {
 
 .text-neutral {
   color: #666;
+}
+
+/* 关灯模式 - 隐藏顶部Header */
+.ant-layout-header {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 48px;
+  overflow: hidden;
+}
+
+body.lights-off-mode .ant-layout-header {
+  height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+.ant-layout {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.lights-off-mode .ant-layout {
+  min-height: 100vh !important;
+}
+
+.ant-layout-content {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.lights-off-mode .ant-layout-content {
+  padding: 0 !important;
+  margin: 0 !important;
+  margin-top: 0 !important;
 }
