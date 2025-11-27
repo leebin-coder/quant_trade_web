@@ -254,10 +254,15 @@ function Quotes() {
       // 根据当前周期聚合数据并显示
       const aggregated = aggregateData(currentData, period)
       console.log('📊 聚合后数据条数:', aggregated.length)
+
+      // 无论有没有数据都更新图表（没数据时显示空图表）
       setChartData(aggregated)
       // 注意：不在这里设置 setLoading(false)，等待图表渲染完成的回调
     } catch (error) {
       console.error('❌ 查询日线数据失败:', error)
+      // 加载失败时也要显示空图表
+      allDataRef.current = []
+      setChartData([])
       setLoading(false)
     }
   }

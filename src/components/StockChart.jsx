@@ -845,12 +845,23 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       return
     }
 
-    // 如果没有数据，也要通知父组件图表已经准备好（避免一直加载）
+    // 如果没有数据，清空图表并通知父组件图表已经准备好（避免一直加载）
     if (!data || data.length === 0) {
-      console.log('⚠️ 没有数据，通知图表准备完成')
+      console.log('⚠️ 没有数据，清空图表并通知准备完成')
+      // 清空K线数据，只显示XY轴
+      candlestickSeriesRef.current.setData([])
+      if (volumeSeriesRef.current) {
+        volumeSeriesRef.current.setData([])
+      }
+      // 清空选中数据
+      setSelectedData(null)
+      lastClickedDataRef.current = null
+
+      // 等待图表清空渲染完成后通知父组件
       setTimeout(() => {
+        console.log('✅ 空图表渲染完成，通知父组件')
         onChartReady?.()
-      }, 150)
+      }, 100)
       return
     }
 
@@ -886,7 +897,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       setTimeout(() => {
         console.log('✅ 通知父组件图表渲染完成')
         onChartReady?.()
-      }, 150)
+      }, 100)
     } catch (error) {
       console.error('❌ Failed to set chart data:', error)
       // 即使出错也要通知完成，避免一直加载
