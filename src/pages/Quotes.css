@@ -212,8 +212,7 @@
   height: calc(100% - 8px);
   margin-bottom: 8px;
   position: relative;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden; /* 改为hidden，避免滚动条影响加载动画 */
   box-sizing: border-box;
   background: rgb(28, 28, 28);
   border-radius: 4px;

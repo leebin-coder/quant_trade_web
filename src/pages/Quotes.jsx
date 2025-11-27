@@ -392,38 +392,50 @@ function Quotes() {
                   >
                     <div className="tab-content">
                       {item.key === 'trading' ? (
-                        // 交易数据Tab - 显示K线图和看板
+                        // 交易数据Tab - 显示K线图
                         selectedStock ? (
-                          chartData.length > 0 || loading ? (
-                            loading && chartData.length === 0 ? (
-                              // 加载中 - 显示四色渐变文字
-                              <div className="tab-content-placeholder">
+                          <>
+                            {/* 加载遮罩层 - 覆盖整个区域 */}
+                            {loading && (
+                              <div style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                backgroundColor: 'rgb(28, 28, 28)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 100,
+                                transition: 'opacity 0.3s ease-out',
+                              }}>
                                 <div className="loading-text">{item.label}</div>
                               </div>
-                            ) : (
-                              <StockChart
-                                data={chartData}
-                                title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
-                                stockInfo={selectedStock}
-                                companyDetail={companyDetail}
-                                period={period}
-                                onPeriodChange={handlePeriodChange}
-                                adjustFlag={adjustFlag}
-                                onAdjustFlagChange={handleAdjustFlagChange}
-                                onChartReady={handleChartReady}
-                                onOpenKnowledge={openKnowledge}
-                                loading={loading}
-                              />
-                            )
-                          ) : (
-                            // 无数据 - 显示Empty组件
-                            <div className="tab-content-placeholder">
-                              <Empty
-                                description="暂无数据"
-                                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                              />
-                            </div>
-                          )
+                            )}
+                            {/* 图表在后台渲染 */}
+                            {chartData.length > 0 && (
+                              <div style={{
+                                width: '100%',
+                                height: '100%',
+                                opacity: loading ? 0 : 1,
+                                transition: 'opacity 0.3s ease-in',
+                              }}>
+                                <StockChart
+                                  data={chartData}
+                                  title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
+                                  stockInfo={selectedStock}
+                                  companyDetail={companyDetail}
+                                  period={period}
+                                  onPeriodChange={handlePeriodChange}
+                                  adjustFlag={adjustFlag}
+                                  onAdjustFlagChange={handleAdjustFlagChange}
+                                  onChartReady={handleChartReady}
+                                  onOpenKnowledge={openKnowledge}
+                                />
+                              </div>
+                            )}
+                          </>
                         ) : (
                           // 未选中股票 - 显示Tab文案
                           <div className="tab-content-placeholder">
