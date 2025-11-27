@@ -893,14 +893,16 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       lastClickedDataRef.current = null
 
       // 标记K线和成交量都已完成（空数据）
-      setTimeout(() => {
-        console.log('✅ 空图表渲染完成')
-        setRenderStatus(prev => ({
-          ...prev,
-          candlestick: true,
-          volume: true,
-        }))
-      }, 50)
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          console.log('✅ 空图表渲染完成')
+          setRenderStatus(prev => ({
+            ...prev,
+            candlestick: true,
+            volume: true,
+          }))
+        }, 100)
+      })
       return
     }
 
@@ -932,13 +934,16 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       }
 
       // 标记K线渲染完成
-      setTimeout(() => {
-        console.log('✅ K线数据渲染完成')
-        setRenderStatus(prev => ({
-          ...prev,
-          candlestick: true,
-        }))
-      }, 50)
+      // 使用 requestAnimationFrame 确保浏览器完成渲染
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          console.log('✅ K线数据渲染完成')
+          setRenderStatus(prev => ({
+            ...prev,
+            candlestick: true,
+          }))
+        }, 100)
+      })
     } catch (error) {
       console.error('❌ Failed to set chart data:', error)
       // 即使出错也要标记完成
@@ -969,13 +974,15 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       volumeSeriesRef.current.setData(volumeData)
 
       // 标记成交量渲染完成
-      setTimeout(() => {
-        console.log('✅ 成交量数据渲染完成')
-        setRenderStatus(prev => ({
-          ...prev,
-          volume: true,
-        }))
-      }, 50)
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          console.log('✅ 成交量数据渲染完成')
+          setRenderStatus(prev => ({
+            ...prev,
+            volume: true,
+          }))
+        }, 100)
+      })
     } catch (error) {
       console.error('Failed to set volume data:', error)
       setRenderStatus(prev => ({
@@ -1106,13 +1113,15 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
 
     // 如果没有数据，标记为完成
     if (!data || data.length === 0) {
-      setTimeout(() => {
-        console.log('✅ 上方指标清空完成（无数据）')
-        setRenderStatus(prev => ({
-          ...prev,
-          upperIndicators: true,
-        }))
-      }, 50)
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          console.log('✅ 上方指标清空完成（无数据）')
+          setRenderStatus(prev => ({
+            ...prev,
+            upperIndicators: true,
+          }))
+        }, 100)
+      })
       return
     }
 
@@ -1198,13 +1207,15 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     })
 
     // 标记上方指标渲染完成
-    setTimeout(() => {
-      console.log('✅ 上方指标渲染完成')
-      setRenderStatus(prev => ({
-        ...prev,
-        upperIndicators: true,
-      }))
-    }, 50)
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        console.log('✅ 上方指标渲染完成')
+        setRenderStatus(prev => ({
+          ...prev,
+          upperIndicators: true,
+        }))
+      }, 100)
+    })
   }, [indicators, data, isChartReady])
 
   // 更新下方技术指标
@@ -1223,13 +1234,15 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
 
     // 如果没有数据或没有选择任何指标，标记为完成
     if (!data || data.length === 0 || !lowerIndicator) {
-      setTimeout(() => {
-        console.log('✅ 下方指标清空完成（无数据）')
-        setRenderStatus(prev => ({
-          ...prev,
-          lowerIndicators: true,
-        }))
-      }, 50)
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          console.log('✅ 下方指标清空完成（无数据）')
+          setRenderStatus(prev => ({
+            ...prev,
+            lowerIndicators: true,
+          }))
+        }, 100)
+      })
       return
     }
 
@@ -1380,13 +1393,15 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     }
 
     // 标记下方指标渲染完成
-    setTimeout(() => {
-      console.log('✅ 下方指标渲染完成')
-      setRenderStatus(prev => ({
-        ...prev,
-        lowerIndicators: true,
-      }))
-    }, 50)
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        console.log('✅ 下方指标渲染完成')
+        setRenderStatus(prev => ({
+          ...prev,
+          lowerIndicators: true,
+        }))
+      }, 100)
+    })
   }, [lowerIndicator, data, isChartReady])
 
   return (
