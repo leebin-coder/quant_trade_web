@@ -36,6 +36,14 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
   const [isChartReady, setIsChartReady] = useState(false)
   const [isVolumeChartReady, setIsVolumeChartReady] = useState(false) // 中间成交量图表是否准备好
   const [isLowerChartReady, setIsLowerChartReady] = useState(false) // 下方图表是否准备好
+  // 追踪各个部分的渲染状态
+  const [renderStatus, setRenderStatus] = useState({
+    candlestick: false,  // K线是否渲染完成
+    volume: false,       // 成交量是否渲染完成
+    upperIndicators: false,  // 上方指标是否渲染完成
+    lowerIndicators: false,  // 下方指标是否渲染完成
+  })
+  const renderStatusRef = useRef(renderStatus)
   // 将 adjustFlag (1,2,3) 映射为 adjustType ('hfq','qfq','none')
   const adjustType = adjustFlag === 1 ? 'hfq' : adjustFlag === 2 ? 'qfq' : 'none'
   const [selectedData, setSelectedData] = useState(null) // 当前悬停或选中的K线数据
@@ -44,10 +52,37 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
   const indicatorSeriesRefs = useRef({}) // 存储上方技术指标系列的引用
   const lowerIndicatorSeriesRefs = useRef({}) // 存储下方技术指标系列的引用
 
-  // 同步最新数据到 ref
+  // 同步最新数据到 ref，并重置渲染状态
   useEffect(() => {
     dataRef.current = data
+    // 当数据变化时，重置所有渲染状态
+    setRenderStatus({
+      candlestick: false,
+      volume: false,
+      upperIndicators: false,
+      lowerIndicators: false,
+    })
   }, [data])
+
+  // 同步 renderStatus 到 ref
+  useEffect(() => {
+    renderStatusRef.current = renderStatus
+  }, [renderStatus])
+
+  // 检查所有部分是否都渲染完成，如果是则通知父组件
+  useEffect(() => {
+    const allReady = renderStatus.candlestick &&
+                     renderStatus.volume &&
+                     renderStatus.upperIndicators &&
+                     renderStatus.lowerIndicators
+
+    if (allReady) {
+      console.log('✅ 所有部分渲染完成，通知父组件')
+      setTimeout(() => {
+        onChartReady?.()
+      }, 100)
+    }
+  }, [renderStatus, onChartReady])
 
   // 同步 selectedData 到 ref
   useEffect(() => {
@@ -845,9 +880,9 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       return
     }
 
-    // 如果没有数据，清空图表并通知父组件图表已经准备好（避免一直加载）
+    // 如果没有数据，清空图表
     if (!data || data.length === 0) {
-      console.log('⚠️ 没有数据，清空图表并通知准备完成')
+      console.log('⚠️ 没有数据，清空图表')
       // 清空K线数据，只显示XY轴
       candlestickSeriesRef.current.setData([])
       if (volumeSeriesRef.current) {
@@ -857,11 +892,15 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       setSelectedData(null)
       lastClickedDataRef.current = null
 
-      // 等待图表清空渲染完成后通知父组件
+      // 标记K线和成交量都已完成（空数据）
       setTimeout(() => {
-        console.log('✅ 空图表渲染完成，通知父组件')
-        onChartReady?.()
-      }, 100)
+        console.log('✅ 空图表渲染完成')
+        setRenderStatus(prev => ({
+          ...prev,
+          candlestick: true,
+          volume: true,
+        }))
+      }, 50)
       return
     }
 
@@ -892,18 +931,26 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
         lastClickedDataRef.current = latestData
       }
 
-      // 通知父组件图表渲染完成
-      // 延迟一小段时间确保所有渲染都完成
+      // 标记K线渲染完成
       setTimeout(() => {
-        console.log('✅ 通知父组件图表渲染完成')
-        onChartReady?.()
-      }, 100)
+        console.log('✅ K线数据渲染完成')
+        setRenderStatus(prev => ({
+          ...prev,
+          candlestick: true,
+        }))
+      }, 50)
     } catch (error) {
       console.error('❌ Failed to set chart data:', error)
-      // 即使出错也要通知完成，避免一直加载
-      onChartReady?.()
+      // 即使出错也要标记完成
+      setRenderStatus(prev => ({
+        ...prev,
+        candlestick: true,
+        volume: true,
+        upperIndicators: true,
+        lowerIndicators: true,
+      }))
     }
-  }, [data, isChartReady, onChartReady])
+  }, [data, isChartReady])
 
   // 更新成交量数据（现在在第一张图中）
   useEffect(() => {
@@ -920,8 +967,21 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       }))
 
       volumeSeriesRef.current.setData(volumeData)
+
+      // 标记成交量渲染完成
+      setTimeout(() => {
+        console.log('✅ 成交量数据渲染完成')
+        setRenderStatus(prev => ({
+          ...prev,
+          volume: true,
+        }))
+      }, 50)
     } catch (error) {
       console.error('Failed to set volume data:', error)
+      setRenderStatus(prev => ({
+        ...prev,
+        volume: true,
+      }))
     }
   }, [data, isChartReady])
 
@@ -1032,17 +1092,29 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
 
   // 更新技术指标
   useEffect(() => {
-    if (!isChartReady || !chartRef.current || !data || data.length === 0) {
+    if (!isChartReady || !chartRef.current) {
       return
     }
 
-    // 清除所有现有的指标线
+    // 清除所有现有的指标线（无论有没有数据都要清除）
     Object.values(indicatorSeriesRefs.current).forEach(series => {
       if (series) {
         chartRef.current.removeSeries(series)
       }
     })
     indicatorSeriesRefs.current = {}
+
+    // 如果没有数据，标记为完成
+    if (!data || data.length === 0) {
+      setTimeout(() => {
+        console.log('✅ 上方指标清空完成（无数据）')
+        setRenderStatus(prev => ({
+          ...prev,
+          upperIndicators: true,
+        }))
+      }, 50)
+      return
+    }
 
     // 根据选中的指标添加新的线
     indicators.forEach(indicator => {
@@ -1124,15 +1196,24 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
         indicatorSeriesRefs.current['BOLL_lower'] = lowerSeries
       }
     })
+
+    // 标记上方指标渲染完成
+    setTimeout(() => {
+      console.log('✅ 上方指标渲染完成')
+      setRenderStatus(prev => ({
+        ...prev,
+        upperIndicators: true,
+      }))
+    }, 50)
   }, [indicators, data, isChartReady])
 
   // 更新下方技术指标
   useEffect(() => {
-    if (!isChartReady || !chartRef.current || !data || data.length === 0) {
+    if (!isChartReady || !chartRef.current) {
       return
     }
 
-    // 清除所有现有的下方指标线
+    // 清除所有现有的下方指标线（无论有没有数据都要清除）
     Object.values(lowerIndicatorSeriesRefs.current).forEach(series => {
       if (series) {
         chartRef.current.removeSeries(series)
@@ -1140,8 +1221,15 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     })
     lowerIndicatorSeriesRefs.current = {}
 
-    // 如果没有选择任何指标，直接返回
-    if (!lowerIndicator) {
+    // 如果没有数据或没有选择任何指标，标记为完成
+    if (!data || data.length === 0 || !lowerIndicator) {
+      setTimeout(() => {
+        console.log('✅ 下方指标清空完成（无数据）')
+        setRenderStatus(prev => ({
+          ...prev,
+          lowerIndicators: true,
+        }))
+      }, 50)
       return
     }
 
@@ -1290,6 +1378,15 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       biasSeries.setData(biasData.filter(d => d.value !== null))
       lowerIndicatorSeriesRefs.current['BIAS'] = biasSeries
     }
+
+    // 标记下方指标渲染完成
+    setTimeout(() => {
+      console.log('✅ 下方指标渲染完成')
+      setRenderStatus(prev => ({
+        ...prev,
+        lowerIndicators: true,
+      }))
+    }, 50)
   }, [lowerIndicator, data, isChartReady])
 
   return (
