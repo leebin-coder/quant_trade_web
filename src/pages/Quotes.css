@@ -390,6 +390,15 @@
   }
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* 收起/展开Tab - 玻璃特效 */
 .toggle-tab {
   padding: 0;

@@ -435,20 +435,18 @@ function Quotes() {
                               right: 0,
                               bottom: 0,
                               backgroundColor: 'rgb(28, 28, 28)',
-                              display: 'flex',
+                              display: loading ? 'flex' : 'none',
                               alignItems: 'center',
                               justifyContent: 'center',
                               zIndex: 100,
-                              opacity: loading ? 1 : 0,
-                              transition: 'opacity 0.4s ease-out',
-                              pointerEvents: loading ? 'auto' : 'none',
                             }}>
                               <div className="loading-text">{item.label}</div>
                             </div>
-                            {/* 图表始终渲染 */}
+                            {/* 图表容器 - 后台渲染，完成后显示 */}
                             <div style={{
                               width: '100%',
                               height: '100%',
+                              visibility: loading ? 'hidden' : 'visible',
                               opacity: loading ? 0 : 1,
                               transition: 'opacity 0.4s ease-in',
                             }}>
