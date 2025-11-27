@@ -271,8 +271,15 @@ function Quotes() {
   // 处理图表渲染完成
   const handleChartReady = () => {
     console.log('🎯 父组件收到图表渲染完成通知')
-    // 图表渲染完成，停止加载动画
-    setLoading(false)
+
+    // 确保加载动画至少显示2.5秒
+    const elapsedTime = Date.now() - loadingStartTimeRef.current
+    const remainingTime = Math.max(0, 2500 - elapsedTime)
+
+    setTimeout(() => {
+      console.log('✅ 加载动画结束，显示图表')
+      setLoading(false)
+    }, remainingTime)
   }
 
   // 处理时间周期变化
@@ -332,11 +339,17 @@ function Quotes() {
   // 当选中股票改变时，加载所有数据
   useEffect(() => {
     if (selectedStock) {
+      // 先清空数据和显示加载动画
+      setLoading(true)
       allDataRef.current = []
       setChartData([])
       setPeriod('daily') // 重置为日线
-      fetchAllAdjustTypes(selectedStock.stockCode) // 预加载所有复权类型的数据
-      fetchCompanyDetail(selectedStock.stockCode) // 获取公司详情
+
+      // 稍微延迟一下再加载数据，确保加载动画能显示
+      setTimeout(() => {
+        fetchAllAdjustTypes(selectedStock.stockCode) // 预加载所有复权类型的数据
+        fetchCompanyDetail(selectedStock.stockCode) // 获取公司详情
+      }, 50)
     }
   }, [selectedStock])
 
@@ -394,48 +407,46 @@ function Quotes() {
                       {item.key === 'trading' ? (
                         // 交易数据Tab - 显示K线图
                         selectedStock ? (
-                          <>
+                          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
                             {/* 加载遮罩层 - 覆盖整个区域 */}
-                            {loading && (
-                              <div style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                backgroundColor: 'rgb(28, 28, 28)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                zIndex: 100,
-                                transition: 'opacity 0.3s ease-out',
-                              }}>
-                                <div className="loading-text">{item.label}</div>
-                              </div>
-                            )}
-                            {/* 图表在后台渲染 */}
-                            {chartData.length > 0 && (
-                              <div style={{
-                                width: '100%',
-                                height: '100%',
-                                opacity: loading ? 0 : 1,
-                                transition: 'opacity 0.3s ease-in',
-                              }}>
-                                <StockChart
-                                  data={chartData}
-                                  title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
-                                  stockInfo={selectedStock}
-                                  companyDetail={companyDetail}
-                                  period={period}
-                                  onPeriodChange={handlePeriodChange}
-                                  adjustFlag={adjustFlag}
-                                  onAdjustFlagChange={handleAdjustFlagChange}
-                                  onChartReady={handleChartReady}
-                                  onOpenKnowledge={openKnowledge}
-                                />
-                              </div>
-                            )}
-                          </>
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              backgroundColor: 'rgb(28, 28, 28)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              zIndex: 100,
+                              opacity: loading ? 1 : 0,
+                              transition: 'opacity 0.4s ease-out',
+                              pointerEvents: loading ? 'auto' : 'none',
+                            }}>
+                              <div className="loading-text">{item.label}</div>
+                            </div>
+                            {/* 图表始终渲染 */}
+                            <div style={{
+                              width: '100%',
+                              height: '100%',
+                              opacity: loading ? 0 : 1,
+                              transition: 'opacity 0.4s ease-in',
+                            }}>
+                              <StockChart
+                                data={chartData}
+                                title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
+                                stockInfo={selectedStock}
+                                companyDetail={companyDetail}
+                                period={period}
+                                onPeriodChange={handlePeriodChange}
+                                adjustFlag={adjustFlag}
+                                onAdjustFlagChange={handleAdjustFlagChange}
+                                onChartReady={handleChartReady}
+                                onOpenKnowledge={openKnowledge}
+                              />
+                            </div>
+                          </div>
                         ) : (
                           // 未选中股票 - 显示Tab文案
                           <div className="tab-content-placeholder">
