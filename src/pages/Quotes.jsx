@@ -16,7 +16,7 @@ function Quotes() {
   const [chartData, setChartData] = useState([])
   const [loading, setLoading] = useState(false)
   const [period, setPeriod] = useState('daily') // 时间周期: minute-分时, daily-日线, weekly-周线, monthly-月线, quarterly-季线, yearly-年线
-  const [adjustFlag, setAdjustFlag] = useState(3) // 复权类型: 1-后复权, 2-前复权, 3-不复权
+  const [adjustFlag, setAdjustFlag] = useState(2) // 复权类型: 1-后复权, 2-前复权, 3-不复权 (默认前复权)
   const allDataRef = useRef([])
   const loadingStartTimeRef = useRef(null)
   // 缓存三种复权类型的数据: { 1: [], 2: [], 3: [] }
@@ -339,17 +339,31 @@ function Quotes() {
   // 当选中股票改变时，加载所有数据
   useEffect(() => {
     if (selectedStock) {
-      // 先清空数据和显示加载动画
-      setLoading(true)
+      // 检查是否是新股票
+      const isNewStock = currentStockCodeRef.current !== selectedStock.stockCode
+
+      if (isNewStock) {
+        // 新股票：清空数据、清空缓存、显示加载动画
+        currentStockCodeRef.current = selectedStock.stockCode
+        setLoading(true)
+        allDataRef.current = []
+        setChartData([])
+        dataCacheRef.current = {} // 清空缓存
+        setPeriod('daily') // 重置为日线
+        setAdjustFlag(2) // 重置为前复权
+
+        // 稍微延迟一下再加载数据，确保加载动画能显示
+        setTimeout(() => {
+          fetchAllAdjustTypes(selectedStock.stockCode) // 预加载所有复权类型的数据
+          fetchCompanyDetail(selectedStock.stockCode) // 获取公司详情
+        }, 50)
+      }
+    } else {
+      // 没有选中股票时，清空所有数据
+      currentStockCodeRef.current = null
       allDataRef.current = []
       setChartData([])
-      setPeriod('daily') // 重置为日线
-
-      // 稍微延迟一下再加载数据，确保加载动画能显示
-      setTimeout(() => {
-        fetchAllAdjustTypes(selectedStock.stockCode) // 预加载所有复权类型的数据
-        fetchCompanyDetail(selectedStock.stockCode) // 获取公司详情
-      }, 50)
+      dataCacheRef.current = {}
     }
   }, [selectedStock])
 
