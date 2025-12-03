@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Tabs, Empty } from 'antd'
 import StockSelector from '../components/StockSelector'
 import StockChart from '../components/StockChart'
@@ -17,11 +17,81 @@ function Quotes() {
   const [loading, setLoading] = useState(false)
   const [period, setPeriod] = useState('daily') // 时间周期: minute-分时, daily-日线, weekly-周线, monthly-月线, quarterly-季线, yearly-年线
   const [adjustFlag, setAdjustFlag] = useState(2) // 复权类型: 1-后复权, 2-前复权, 3-不复权 (默认前复权)
+  const [chartHeight, setChartHeight] = useState(520)
+  const [chartHeaderHeight, setChartHeaderHeight] = useState(0)
   const allDataRef = useRef([])
   const loadingStartTimeRef = useRef(null)
   // 缓存三种复权类型的数据: { 1: [], 2: [], 3: [] }
   const dataCacheRef = useRef({})
   const currentStockCodeRef = useRef(null)
+  const containerRef = useRef(null)
+  const mainModulesRef = useRef(null)
+  const tradingTabsRef = useRef(null)
+  const tabContentRef = useRef(null)
+  const chartSectionRef = useRef(null)
+
+  const handleChartHeaderHeight = useCallback((height) => {
+    setChartHeaderHeight(prev => {
+      const roundedPrev = Math.round(prev || 0)
+      const roundedNext = Math.round(height || 0)
+      return roundedPrev === roundedNext ? prev : height || 0
+    })
+  }, [])
+
+  const updateChartHeight = useCallback(() => {
+    if (typeof window === 'undefined') return
+    const viewport = window.innerHeight || 900
+    const containerOffset = containerRef.current ? Math.max(0, containerRef.current.getBoundingClientRect().top) : 0
+    const modulesHeight = mainModulesRef.current?.offsetHeight || 0
+    const tabsHeight = tradingTabsRef.current?.offsetHeight || 0
+    const titleHeight = chartHeaderHeight || 0
+    const displayAreaHeight = tabContentRef.current
+      ? tabContentRef.current.clientHeight
+      : viewport - containerOffset - modulesHeight - tabsHeight
+    const MIN_CHART_HEIGHT = 260
+    const sectionTop = chartSectionRef.current
+      ? Math.max(0, chartSectionRef.current.getBoundingClientRect().top)
+      : containerOffset + modulesHeight + tabsHeight + titleHeight
+    const viewportAvailable = viewport - sectionTop
+    const tabHeight = tabContentRef.current?.clientHeight ?? null
+    const chartOffsetWithinTab = tabContentRef.current && chartSectionRef.current
+      ? chartSectionRef.current.offsetTop
+      : 0
+    const tabAvailable = tabHeight !== null
+      ? tabHeight - chartOffsetWithinTab
+      : null
+    const maxChartHeight = tabAvailable !== null
+      ? Math.max(MIN_CHART_HEIGHT, tabAvailable)
+      : viewportAvailable
+    const constrainedHeight = Math.max(MIN_CHART_HEIGHT, Math.min(maxChartHeight, viewportAvailable))
+    console.log(
+      '📐 Tab content height:',
+      Math.round(displayAreaHeight),
+      'px; chart offset:',
+      Math.round(chartOffsetWithinTab),
+      'px; chart rendering height:',
+      Math.round(constrainedHeight),
+      'px'
+    )
+    setChartHeight(constrainedHeight)
+  }, [chartHeaderHeight])
+
+  useEffect(() => {
+    updateChartHeight()
+    if (typeof window === 'undefined') return
+    window.addEventListener('resize', updateChartHeight)
+    return () => window.removeEventListener('resize', updateChartHeight)
+  }, [updateChartHeight])
+
+  useEffect(() => {
+    updateChartHeight()
+  }, [activeKey, mainModule, selectedStock, period, adjustFlag, updateChartHeight])
+
+  useEffect(() => {
+    if (!chartData.length) {
+      handleChartHeaderHeight(0)
+    }
+  }, [chartData.length, handleChartHeaderHeight])
 
   // 五大模块
   const mainModules = [
@@ -373,9 +443,9 @@ function Quotes() {
   }, [selectedStock])
 
   return (
-    <div className="quotes-container">
+    <div className="quotes-container" ref={containerRef}>
       {/* 顶部五大模块切换 */}
-      <div className="main-modules">
+      <div className="main-modules" ref={mainModulesRef}>
         {mainModules.map(module => (
           <div
             key={module.key}
@@ -398,7 +468,7 @@ function Quotes() {
             {/* 右侧：Tab Bar + 内容 */}
             <div className="quotes-tabs-wrapper">
               {/* Tab Bar 容器 */}
-              <div className="tabs-bar-container">
+              <div className="tabs-bar-container" ref={tradingTabsRef}>
                 {/* 交易数据Tabs */}
                 <div className="data-tabs-wrapper">
                   <div className="data-tabs-nav">
@@ -416,7 +486,7 @@ function Quotes() {
               </div>
 
               {/* Tab 内容区域 */}
-              <div className="tab-content-container">
+              <div className="tab-content-container" ref={tabContentRef}>
                 {tabItems.map(item => (
                   <div
                     key={item.key}
@@ -426,44 +496,54 @@ function Quotes() {
                       {item.key === 'trading' ? (
                         // 交易数据Tab - 显示K线图
                         selectedStock ? (
-                          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                            {/* 加载遮罩层 - 覆盖整个区域 */}
-                            <div style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              bottom: 0,
-                              backgroundColor: 'rgb(28, 28, 28)',
-                              display: loading ? 'flex' : 'none',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              zIndex: 100,
-                            }}>
-                              <div className="loading-text">{item.label}</div>
-                            </div>
-                            {/* 图表容器 - 后台渲染，完成后显示 */}
-                            <div style={{
-                              width: '100%',
-                              height: '100%',
-                              visibility: loading ? 'hidden' : 'visible',
-                              opacity: loading ? 0 : 1,
-                              transition: 'opacity 0.4s ease-in',
-                            }}>
-                              <StockChart
-                                data={chartData}
-                                title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
-                                stockInfo={selectedStock}
-                                companyDetail={companyDetail}
-                                period={period}
-                                onPeriodChange={handlePeriodChange}
-                                adjustFlag={adjustFlag}
-                                onAdjustFlagChange={handleAdjustFlagChange}
-                                onChartReady={handleChartReady}
-                                onOpenKnowledge={openKnowledge}
-                              />
-                            </div>
-                          </div>
+                              <div
+                                ref={chartSectionRef}
+                                className="trading-chart-wrapper"
+                                style={{ height: chartHeight }}
+                              >
+                                {/* 加载遮罩层 - 覆盖整个区域 */}
+                                <div style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  backgroundColor: 'rgb(28, 28, 28)',
+                                  display: loading ? 'flex' : 'none',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  zIndex: 100,
+                                }}>
+                                  <div className="loading-text">{item.label}</div>
+                                </div>
+                                {/* 图表容器 - 后台渲染，完成后显示 */}
+                                <div
+                                  className="trading-chart-content"
+                                  style={{
+                                    height: chartHeight,
+                                    visibility: loading ? 'hidden' : 'visible',
+                                    opacity: loading ? 0 : 1,
+                                    transition: 'opacity 0.4s ease-in',
+                                  }}
+                                >
+                                  {chartData.length > 0 && (
+                                    <StockChart
+                                      data={chartData}
+                                      title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
+                                      stockInfo={selectedStock}
+                                      companyDetail={companyDetail}
+                                      period={period}
+                                      onPeriodChange={handlePeriodChange}
+                                      adjustFlag={adjustFlag}
+                                    onAdjustFlagChange={handleAdjustFlagChange}
+                                    onChartReady={handleChartReady}
+                                    onOpenKnowledge={openKnowledge}
+                                    height={chartHeight}
+                                    onHeaderHeightChange={handleChartHeaderHeight}
+                                  />
+                                  )}
+                                </div>
+                              </div>
                         ) : (
                           // 未选中股票 - 显示Tab文案
                           <div className="tab-content-placeholder">

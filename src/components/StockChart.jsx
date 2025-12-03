@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useLayoutEffect } from 'react'
 import { createChart } from 'lightweight-charts'
 import { Select, ConfigProvider, Checkbox, Radio, Popover, message, Tooltip } from 'antd'
 import { InfoCircleOutlined, EnvironmentOutlined, CopyOutlined, QuestionCircleOutlined, RightOutlined } from '@ant-design/icons'
@@ -20,8 +20,9 @@ import './StockChart.css'
  * @param {Function} props.onAdjustFlagChange - 复权类型变化回调
  * @param {Function} props.onChartReady - 图表渲染完成回调
  * @param {Function} props.onOpenKnowledge - 打开知识库回调，参数为文档节点ID
+ * @param {Function} props.onHeaderHeightChange - 图表标题区域高度变化回调
  */
-function StockChart({ data = [], height = 600, title = '', stockInfo = null, companyDetail = null, period = 'daily', onPeriodChange, adjustFlag = 3, onAdjustFlagChange, onChartReady, onOpenKnowledge }) {
+function StockChart({ data = [], height = 600, title = '', stockInfo = null, companyDetail = null, period = 'daily', onPeriodChange, adjustFlag = 3, onAdjustFlagChange, onChartReady, onOpenKnowledge, onHeaderHeightChange }) {
   const chartContainerRef = useRef(null)
   const volumeChartContainerRef = useRef(null) // 中间成交量图表容器
   const lowerChartContainerRef = useRef(null) // 下方指标图表容器
@@ -51,6 +52,54 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
   const [lowerIndicator, setLowerIndicator] = useState('KDJ') // 选中的下方技术指标,默认选中KDJ(单选)
   const indicatorSeriesRefs = useRef({}) // 存储上方技术指标系列的引用
   const lowerIndicatorSeriesRefs = useRef({}) // 存储下方技术指标系列的引用
+  const chartHeaderRef = useRef(null)
+  const lowerIndicatorItems = [
+    { value: 'KDJ', label: 'KDJ', color: '#2196F3', docId: indicatorDocsId.KDJ, description: indicatorDescriptions.KDJ },
+    { value: 'MACD', label: 'MACD', color: '#4CAF50', docId: indicatorDocsId.MACD, description: indicatorDescriptions.MACD },
+    { value: 'RSI', label: 'RSI', color: '#FF9800', docId: indicatorDocsId.RSI, description: indicatorDescriptions.RSI },
+    { value: 'WR', label: 'WR', color: '#E91E63', docId: indicatorDocsId.WR, description: indicatorDescriptions.WR },
+    { value: 'DMI', label: 'DMI', color: '#673AB7', docId: indicatorDocsId.DMI, description: indicatorDescriptions.DMI },
+    { value: 'CCI', label: 'CCI', color: '#00BCD4', docId: indicatorDocsId.CCI, description: indicatorDescriptions.CCI },
+    { value: 'BIAS', label: 'BIAS', color: '#FF5722', docId: indicatorDocsId.BIAS, description: indicatorDescriptions.BIAS },
+  ]
+  const [measuredHeaderHeight, setMeasuredHeaderHeight] = useState(0)
+  const LOWER_CHART_HEIGHT = 260
+  const CHART_LAYOUT = {
+    mainBottom: 0.36,
+    volumeTop: 0.57,
+    volumeBottom: 0.19,
+    lowerTop: 0.82,
+    lowerBottom: 0.03,
+  }
+  const numericHeight = typeof height === 'number' ? height : 0
+  const lowerSelectorFallback = Math.max(0, numericHeight * CHART_LAYOUT.lowerTop + 12)
+
+  useLayoutEffect(() => {
+    const element = chartHeaderRef.current
+    if (!element) {
+      setMeasuredHeaderHeight(0)
+      onHeaderHeightChange?.(0)
+      return
+    }
+
+    const reportHeight = () => {
+      const rect = element.getBoundingClientRect()
+      const nextHeight = rect.height || 0
+      setMeasuredHeaderHeight(nextHeight)
+      onHeaderHeightChange?.(nextHeight)
+    }
+
+    reportHeight()
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(reportHeight)
+      observer.observe(element)
+      return () => observer.disconnect()
+    } else if (typeof window !== 'undefined') {
+      window.addEventListener('resize', reportHeight)
+      return () => window.removeEventListener('resize', reportHeight)
+    }
+  }, [onHeaderHeightChange, title, stockInfo, companyDetail])
 
   // 同步最新数据到 ref，并重置渲染状态
   useEffect(() => {
@@ -176,8 +225,8 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
           autoScale: true,
           alignLabels: true,
           scaleMargins: {
-            top: 0.05,      // 顶部留5%空白，避免被选择器覆盖
-            bottom: 0.40,   // 底部留40%空白 (5% - 65%)
+            top: 0.05,
+            bottom: CHART_LAYOUT.mainBottom,
           },
         })
 
@@ -191,12 +240,12 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
 
         // 成交量价格刻度设置 - 占用中间15%空间 (66% - 81%)
         chart.priceScale('volume').applyOptions({
-          visible: false,  // 隐藏volume的价格刻度
+          visible: false,
           autoScale: true,
           alignLabels: false,
           scaleMargins: {
-            top: 0.66,     // 顶部留66%空白
-            bottom: 0.19,  // 底部留19%空白 (66% - 81%)
+            top: CHART_LAYOUT.volumeTop,
+            bottom: CHART_LAYOUT.volumeBottom,
           },
         })
 
@@ -209,13 +258,13 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
 
         // 技术指标价格刻度设置 - 占用下方12%空间 (86% - 98%)
         chart.priceScale('lower').applyOptions({
-          visible: false,  // 隐藏lower的价格刻度
+          visible: false,
           autoScale: true,
           alignLabels: false,
-          mode: 0,  // 正常模式
+          mode: 0,
           scaleMargins: {
-            top: 0.86,     // 顶部留86%空白（指标区域从86%开始）
-            bottom: 0.02,   // 底部留2%空白
+            top: CHART_LAYOUT.lowerTop,
+            bottom: CHART_LAYOUT.lowerBottom,
           },
         })
 
@@ -1404,19 +1453,120 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     })
   }, [lowerIndicator, data, isChartReady])
 
+  useEffect(() => {
+    console.log('📏 StockChart received height:', height, 'header:', measuredHeaderHeight)
+  }, [height, measuredHeaderHeight])
+
+  const containerHeight = typeof height === 'number' ? `${Math.max(height, 0)}px` : '100%'
+  const bodyHeight = typeof height === 'number'
+    ? Math.max(height - measuredHeaderHeight - 16, 0)
+    : null
+  const chartAreaHeight = bodyHeight ?? numericHeight ?? 0
+  const SELECTOR_PADDING = 12
+  let lowerSelectorTop
+  if (chartAreaHeight) {
+    const volumeBottomPos = chartAreaHeight * (1 - CHART_LAYOUT.volumeBottom)
+    const indicatorTopPos = chartAreaHeight * CHART_LAYOUT.lowerTop
+    const maxSelectorTop = chartAreaHeight - LOWER_CHART_HEIGHT - SELECTOR_PADDING
+    lowerSelectorTop = Math.max(
+      volumeBottomPos + SELECTOR_PADDING,
+      Math.min(indicatorTopPos + SELECTOR_PADDING, maxSelectorTop)
+    )
+  } else {
+    lowerSelectorTop = lowerSelectorFallback
+  }
+  const RIGHT_PANEL_BASE_HEIGHT = 720
+  const rightPanelAvailableHeight = bodyHeight ?? numericHeight ?? RIGHT_PANEL_BASE_HEIGHT
+  const rightPanelScale = Math.min(1, Math.max(0.65, rightPanelAvailableHeight / RIGHT_PANEL_BASE_HEIGHT))
+  const scalePx = (value) => `${(value * rightPanelScale).toFixed(2)}px`
+  const rpFont = {
+    heading: scalePx(16),
+    sectionTitle: scalePx(13),
+    label: scalePx(11),
+    value: scalePx(14),
+    secondary: scalePx(12),
+    mini: scalePx(10),
+  }
+  const rpSpace = {
+    tiny: scalePx(2),
+    small: scalePx(6),
+    medium: scalePx(8),
+    large: scalePx(10),
+    block: scalePx(16),
+  }
+  const rpGap = {
+    double: `${scalePx(10)} ${scalePx(10)}`,
+    single: scalePx(8),
+    tight: scalePx(6),
+  }
+  const lowerIndicatorOptions = lowerIndicatorItems.map((item) => ({
+    value: item.value,
+    label: (
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+        <span style={{ color: item.color, fontWeight: 500 }}>{item.label}</span>
+        <Popover
+          overlayInnerStyle={{
+            backgroundColor: '#1f1f1f',
+            color: '#ffffff',
+            border: '1px solid #3a3a3a',
+            boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
+          }}
+          content={
+            <div className="indicator-popover-wrapper">
+              <button
+                className="indicator-learn-more"
+                onClick={() => onOpenKnowledge?.(item.docId)}
+              >
+                Learn More <RightOutlined style={{ fontSize: '10px' }} />
+              </button>
+              <div
+                className="indicator-popover-content"
+                style={{
+                  width: popoverConfig.width,
+                  color: '#ffffff',
+                  fontSize: popoverConfig.fontSize,
+                  lineHeight: popoverConfig.lineHeight,
+                }}
+              >
+                <ReactMarkdown>{item.description}</ReactMarkdown>
+              </div>
+            </div>
+          }
+          trigger="hover"
+        >
+          <QuestionCircleOutlined
+            style={{ fontSize: '11px', cursor: 'help' }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </Popover>
+      </span>
+    ),
+  }))
+
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+    <div
+      style={{
+        width: '100%',
+        height: containerHeight,
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        minHeight: 0,
+      }}
+    >
       {/* 标题和控制器行 */}
       {title && (
         <div
+          ref={chartHeaderRef}
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 200px',
             gap: '40px',
             alignItems: 'center',
-            marginBottom: '20px',
+            paddingBottom: '16px',
             width: '100%',
             boxSizing: 'border-box',
+            flexShrink: 0,
           }}
         >
           {/* 左侧：标题和控制器组 */}
@@ -2400,9 +2550,29 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       )}
 
       {/* 图表和数据看板容器 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '40px', width: '100%', flex: 1, minHeight: 0, boxSizing: 'border-box' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 200px',
+          gap: '40px',
+          width: '100%',
+          flex: bodyHeight ? '0 0 auto' : 1,
+          height: bodyHeight ? `${bodyHeight}px` : '100%',
+          minHeight: 0,
+          boxSizing: 'border-box',
+        }}
+      >
         {/* 图表区域 - 自适应宽度 */}
-        <div style={{ minWidth: 0, position: 'relative', height: '100%' }}>
+        <div
+          style={{
+            minWidth: 0,
+            position: 'relative',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+          }}
+        >
           {/* 技术指标选择器 - 左上角 */}
           <div
             style={{
@@ -2697,342 +2867,45 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
             </ConfigProvider>
           </div>
 
-          {/* 技术指标选择器 - 放在成交量图和指标图之间 */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '550px',
-              left: '10px',
-              zIndex: 10,
-              display: 'flex',
-              gap: '8px',
-              flexWrap: 'wrap',
+          {/* 技术指标选择器 - 下拉单选置于指标图左上 */}
+          <ConfigProvider
+            theme={{
+              components: {
+                Select: {
+                  colorBgContainer: 'rgba(8, 8, 8, 0.75)',
+                  colorBorder: 'rgba(255, 255, 255, 0.2)',
+                  colorText: '#ffffff',
+                  colorTextPlaceholder: 'rgba(255, 255, 255, 0.4)',
+                  optionSelectedColor: '#1890ff',
+                  controlHeightSM: 28,
+                  borderRadiusSM: 6,
+                },
+              },
             }}
           >
-            <ConfigProvider
-              theme={{
-                components: {
-                  Checkbox: {
-                    colorPrimary: '#1890ff',
-                    colorPrimaryHover: '#40a9ff',
-                    fontSize: 12,
-                  },
-                },
+            <Select
+              size="small"
+              value={lowerIndicator}
+              onChange={(value) => setLowerIndicator(value)}
+              options={lowerIndicatorOptions}
+              dropdownMatchSelectWidth={false}
+              style={{
+                position: 'absolute',
+                top: `${lowerSelectorTop}px`,
+                left: '10px',
+                zIndex: 10,
+                width: 'fit-content',
+                minWidth: 0,
+                paddingInline: 4,
+                textAlign: 'center',
+                background: 'rgba(8, 8, 8, 0.65)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: 6,
               }}
-            >
-              <Checkbox.Group
-                value={lowerIndicator ? [lowerIndicator] : []}
-                onChange={(values) => setLowerIndicator(values[values.length - 1] || null)}
-                style={{
-                  display: 'flex',
-                  gap: '8px',
-                  flexWrap: 'wrap',
-                }}
-              >
-                <Checkbox
-                  className="indicator-checkbox"
-                  value="KDJ"
-                  style={{
-                    margin: 0,
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    backgroundColor: 'rgba(33, 150, 243, 0.15)',
-                    border: lowerIndicator === 'KDJ' ? '1px solid #2196F3' : '1px solid transparent',
-                    display: 'flex',
-                                        alignItems: 'center',
-                    gap: '4px',
-                                      }}
-                >
-                  <span style={{ color: '#2196F3', fontWeight: 500 }}>KDJ</span>
-                  <Popover
-                    overlayInnerStyle={{
-                      backgroundColor: '#1f1f1f',
-                      color: '#ffffff',
-                      border: '1px solid #3a3a3a',
-                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
-                    }}
-                    content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.KDJ)}
-                        >
-                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.KDJ}</ReactMarkdown>
-                        </div>
-                      </div>
-                    }
-                    trigger="hover"
-                  >
-                    <QuestionCircleOutlined
-                      style={{ color: '#2196F3', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </Popover>
-                </Checkbox>
-                <Checkbox
-                  className="indicator-checkbox"
-                  value="MACD"
-                  style={{
-                    margin: 0,
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    backgroundColor: 'rgba(76, 175, 80, 0.15)',
-                    border: lowerIndicator === 'MACD' ? '1px solid #4CAF50' : '1px solid transparent',
-                    display: 'flex',
-                                        alignItems: 'center',
-                    gap: '4px',
-                                      }}
-                >
-                  <span style={{ color: '#4CAF50', fontWeight: 500 }}>MACD</span>
-                  <Popover
-                    overlayInnerStyle={{
-                      backgroundColor: '#1f1f1f',
-                      color: '#ffffff',
-                      border: '1px solid #3a3a3a',
-                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
-                    }}
-                    content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.MACD)}
-                        >
-                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.MACD}</ReactMarkdown>
-                        </div>
-                      </div>
-                    }
-                    trigger="hover"
-                  >
-                    <QuestionCircleOutlined
-                      style={{ color: '#4CAF50', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </Popover>
-                </Checkbox>
-                <Checkbox
-                  className="indicator-checkbox"
-                  value="RSI"
-                  style={{
-                    margin: 0,
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    backgroundColor: 'rgba(255, 152, 0, 0.15)',
-                    border: lowerIndicator === 'RSI' ? '1px solid #FF9800' : '1px solid transparent',
-                    display: 'flex',
-                                        alignItems: 'center',
-                    gap: '4px',
-                                      }}
-                >
-                  <span style={{ color: '#FF9800', fontWeight: 500 }}>RSI</span>
-                  <Popover
-                    overlayInnerStyle={{
-                      backgroundColor: '#1f1f1f',
-                      color: '#ffffff',
-                      border: '1px solid #3a3a3a',
-                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
-                    }}
-                    content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.RSI)}
-                        >
-                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.RSI}</ReactMarkdown>
-                        </div>
-                      </div>
-                    }
-                    trigger="hover"
-                  >
-                    <QuestionCircleOutlined
-                      style={{ color: '#FF9800', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </Popover>
-                </Checkbox>
-                <Checkbox
-                  className="indicator-checkbox"
-                  value="WR"
-                  style={{
-                    margin: 0,
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    backgroundColor: 'rgba(233, 30, 99, 0.15)',
-                    border: lowerIndicator === 'WR' ? '1px solid #E91E63' : '1px solid transparent',
-                    display: 'flex',
-                                        alignItems: 'center',
-                    gap: '4px',
-                                      }}
-                >
-                  <span style={{ color: '#E91E63', fontWeight: 500 }}>WR</span>
-                  <Popover
-                    overlayInnerStyle={{
-                      backgroundColor: '#1f1f1f',
-                      color: '#ffffff',
-                      border: '1px solid #3a3a3a',
-                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
-                    }}
-                    content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.WR)}
-                        >
-                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.WR}</ReactMarkdown>
-                        </div>
-                      </div>
-                    }
-                    trigger="hover"
-                  >
-                    <QuestionCircleOutlined
-                      style={{ color: '#E91E63', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </Popover>
-                </Checkbox>
-                <Checkbox
-                  className="indicator-checkbox"
-                  value="DMI"
-                  style={{
-                    margin: 0,
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    backgroundColor: 'rgba(103, 58, 183, 0.15)',
-                    border: lowerIndicator === 'DMI' ? '1px solid #673AB7' : '1px solid transparent',
-                    display: 'flex',
-                                        alignItems: 'center',
-                    gap: '4px',
-                                      }}
-                >
-                  <span style={{ color: '#673AB7', fontWeight: 500 }}>DMI</span>
-                  <Popover
-                    overlayInnerStyle={{
-                      backgroundColor: '#1f1f1f',
-                      color: '#ffffff',
-                      border: '1px solid #3a3a3a',
-                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
-                    }}
-                    content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.DMI)}
-                        >
-                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.DMI}</ReactMarkdown>
-                        </div>
-                      </div>
-                    }
-                    trigger="hover"
-                  >
-                    <QuestionCircleOutlined
-                      style={{ color: '#673AB7', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </Popover>
-                </Checkbox>
-                <Checkbox
-                  className="indicator-checkbox"
-                  value="CCI"
-                  style={{
-                    margin: 0,
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    backgroundColor: 'rgba(0, 188, 212, 0.15)',
-                    border: lowerIndicator === 'CCI' ? '1px solid #00BCD4' : '1px solid transparent',
-                    display: 'flex',
-                                        alignItems: 'center',
-                    gap: '4px',
-                                      }}
-                >
-                  <span style={{ color: '#00BCD4', fontWeight: 500 }}>CCI</span>
-                  <Popover
-                    overlayInnerStyle={{
-                      backgroundColor: '#1f1f1f',
-                      color: '#ffffff',
-                      border: '1px solid #3a3a3a',
-                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
-                    }}
-                    content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.CCI)}
-                        >
-                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.CCI}</ReactMarkdown>
-                        </div>
-                      </div>
-                    }
-                    trigger="hover"
-                  >
-                    <QuestionCircleOutlined
-                      style={{ color: '#00BCD4', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </Popover>
-                </Checkbox>
-                <Checkbox
-                  className="indicator-checkbox"
-                  value="BIAS"
-                  style={{
-                    margin: 0,
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    backgroundColor: 'rgba(255, 87, 34, 0.15)',
-                    border: lowerIndicator === 'BIAS' ? '1px solid #FF5722' : '1px solid transparent',
-                    display: 'flex',
-                                        alignItems: 'center',
-                    gap: '4px',
-                                      }}
-                >
-                  <span style={{ color: '#FF5722', fontWeight: 500 }}>BIAS</span>
-                  <Popover
-                    overlayInnerStyle={{
-                      backgroundColor: '#1f1f1f',
-                      color: '#ffffff',
-                      border: '1px solid #3a3a3a',
-                        boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
-                    }}
-                    content={
-                      <div className="indicator-popover-wrapper">
-                        <button 
-                          className="indicator-learn-more" 
-                          onClick={() => onOpenKnowledge?.(indicatorDocsId.BIAS)}
-                        >
-                          Learn More <RightOutlined style={{ fontSize: '10px' }} />
-                        </button>
-                        <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                          <ReactMarkdown>{indicatorDescriptions.BIAS}</ReactMarkdown>
-                        </div>
-                      </div>
-                    }
-                    trigger="hover"
-                  >
-                    <QuestionCircleOutlined
-                      style={{ color: '#FF5722', fontSize: '11px', cursor: 'help', marginLeft: '4px' }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </Popover>
-                </Checkbox>
-              </Checkbox.Group>
-            </ConfigProvider>
-          </div>
+              dropdownStyle={{ minWidth: 120 }}
+              getPopupContainer={(trigger) => trigger.parentNode}
+            />
+          </ConfigProvider>
 
           {/* K线图 */}
           <div
@@ -3040,6 +2913,8 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
             style={{
               width: '100%',
               height: '100%',
+              flex: 1,
+              minHeight: 0,
             }}
           />
         </div>
@@ -3047,21 +2922,23 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
         {/* 右侧：数据看板 - 固定200px，分为三个区块 */}
         <div
           style={{
-            padding: '0 0 40px 20px',
+            padding: `0 0 ${rpSpace.block} ${rpSpace.block}`,
             display: 'flex',
             flexDirection: 'column',
-            gap: '0',
+            gap: rpSpace.small,
+            minHeight: 0,
+            height: '100%',
           }}
         >
           {/* 第一块：K线数据 */}
-          <div style={{ paddingTop: '0px' }}>
+          <div style={{ paddingTop: '0px', flexShrink: 0 }}>
             {/* 交易日期 */}
             <div
               style={{
-                fontSize: '16px',
+                fontSize: rpFont.heading,
                 fontWeight: 'bold',
                 color: '#ffffff',
-                marginBottom: '12px',
+                marginBottom: rpSpace.large,
                 textAlign: 'left',
               }}
             >
@@ -3069,83 +2946,39 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
             </div>
 
             {/* K线数据网格 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 12px' }}>
-              {/* 开盘价 */}
-              <div>
-                <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>开盘价</div>
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: displayData && displayData.previousClose
-                    ? displayData.open > displayData.previousClose
-                      ? '#ef232a'  // 红色：高于上一交易日收盘价
-                      : displayData.open < displayData.previousClose
-                      ? '#14b143'  // 绿色：低于上一交易日收盘价
-                      : '#ffffff'  // 白色：等于上一交易日收盘价
-                    : '#ffffff'
-                }}>
-                  {displayData ? displayData.open.toFixed(2) : '--'}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: rpGap.double }}>
+              {[
+                { label: '开盘价', value: displayData?.open, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
+                { label: '收盘价', value: displayData?.close, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
+                { label: '最高', value: displayData?.high, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
+                { label: '最低', value: displayData?.low, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
+              ].map((item) => (
+                <div key={item.label}>
+                  <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>{item.label}</div>
+                  <div
+                    style={{
+                      fontSize: rpFont.value,
+                      fontWeight: '500',
+                      color: item.value !== undefined && item.value !== null && item.compare
+                        ? item.value > item.compare
+                          ? item.positiveColor
+                          : item.value < item.compare
+                          ? item.negativeColor
+                          : '#ffffff'
+                        : '#ffffff',
+                    }}
+                  >
+                    {item.value !== undefined && item.value !== null ? item.value.toFixed(2) : '--'}
+                  </div>
                 </div>
-              </div>
-              {/* 收盘价 */}
-              <div>
-                <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>收盘价</div>
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: displayData && displayData.previousClose
-                    ? displayData.close > displayData.previousClose
-                      ? '#ef232a'  // 红色：高于上一交易日收盘价
-                      : displayData.close < displayData.previousClose
-                      ? '#14b143'  // 绿色：低于上一交易日收盘价
-                      : '#ffffff'  // 白色：等于上一交易日收盘价
-                    : '#ffffff'
-                }}>
-                  {displayData ? displayData.close.toFixed(2) : '--'}
-                </div>
-              </div>
-
-              {/* 最高 */}
-              <div>
-                <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>最高</div>
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: displayData && displayData.previousClose
-                    ? displayData.high > displayData.previousClose
-                      ? '#ef232a'  // 红色：高于上一交易日收盘价
-                      : displayData.high < displayData.previousClose
-                      ? '#14b143'  // 绿色：低于上一交易日收盘价
-                      : '#ffffff'  // 白色：等于上一交易日收盘价
-                    : '#ffffff'
-                }}>
-                  {displayData ? displayData.high.toFixed(2) : '--'}
-                </div>
-              </div>
-              {/* 最低 */}
-              <div>
-                <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>最低</div>
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: displayData && displayData.previousClose
-                    ? displayData.low > displayData.previousClose
-                      ? '#ef232a'  // 红色：高于上一交易日收盘价
-                      : displayData.low < displayData.previousClose
-                      ? '#14b143'  // 绿色：低于上一交易日收盘价
-                      : '#ffffff'  // 白色：等于上一交易日收盘价
-                    : '#ffffff'
-                }}>
-                  {displayData ? displayData.low.toFixed(2) : '--'}
-                </div>
-              </div>
+              ))}
 
               {/* 涨幅(%) */}
               <div>
-                <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>涨幅(%)</div>
+                <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>涨幅(%)</div>
                 <div
                   style={{
-                    fontSize: '14px',
+                    fontSize: rpFont.value,
                     fontWeight: '500',
                     color: displayData
                       ? displayData.changePercent > 0
@@ -3168,10 +3001,10 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
               </div>
               {/* 涨幅(¥) */}
               <div>
-                <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>涨幅(¥)</div>
+                <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>涨幅(¥)</div>
                 <div
                   style={{
-                    fontSize: '14px',
+                    fontSize: rpFont.value,
                     fontWeight: '500',
                     color: displayData
                       ? displayData.changeAmount > 0
@@ -3198,73 +3031,71 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
           {/* 第二块：成交量数据 */}
           <div
             style={{
-              paddingTop: '12px',
-              marginTop: '20px',
+              paddingTop: rpSpace.large,
+              marginTop: rpSpace.block,
+              flexShrink: 0,
             }}
           >
             <div
               style={{
-                fontSize: '13px',
+                fontSize: rpFont.sectionTitle,
                 fontWeight: '600',
                 color: '#ffffff',
-                marginBottom: '10px',
+                marginBottom: rpSpace.medium,
               }}
             >
               成交量
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
-              {/* 成交量 */}
-              <div>
-                <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>成交量</div>
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: '500',
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: rpGap.single }}>
+              {[
+                {
+                  label: '成交量',
+                  value: displayData ? `${(displayData.volume / 10000).toFixed(2)} 万手` : '--',
                   color: displayData
                     ? displayData.close > displayData.open
                       ? '#ef232a'
                       : displayData.close < displayData.open
                       ? '#14b143'
                       : '#ffffff'
-                    : '#ffffff'
-                }}>
-                  {displayData ? `${(displayData.volume / 10000).toFixed(2)} 万手` : '--'}
-                </div>
-              </div>
-              {/* 成交额 */}
-              <div>
-                <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>成交额</div>
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: '500',
+                    : '#ffffff',
+                },
+                {
+                  label: '成交额',
+                  value: displayData ? `${(displayData.volume * displayData.close / 100000000).toFixed(2)} 亿元` : '--',
                   color: displayData
                     ? displayData.close > displayData.open
                       ? '#ef232a'
                       : displayData.close < displayData.open
                       ? '#14b143'
                       : '#ffffff'
-                    : '#ffffff'
-                }}>
-                  {displayData ? `${(displayData.volume * displayData.close / 100000000).toFixed(2)} 亿元` : '--'}
+                    : '#ffffff',
+                },
+              ].map((item) => (
+                <div key={item.label}>
+                  <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>{item.label}</div>
+                  <div style={{ fontSize: rpFont.value, fontWeight: '500', color: item.color }}>
+                    {item.value}
+                  </div>
                 </div>
-              </div>
-              {/* 换手率 */}
+              ))}
               {displayData?.turn !== null && displayData?.turn !== undefined && (
                 <div>
-                  <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>换手率</div>
-                  <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff' }}>
+                  <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>换手率</div>
+                  <div style={{ fontSize: rpFont.value, fontWeight: '500', color: '#ffffff' }}>
                     {displayData.turn.toFixed(2)}%
                   </div>
                 </div>
               )}
-              {/* 交易状态 */}
               {displayData?.tradeStatus !== null && displayData?.tradeStatus !== undefined && (
                 <div>
-                  <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>交易状态</div>
-                  <div style={{
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: displayData.tradeStatus === 1 ? '#4CAF50' : '#FF9800'
-                  }}>
+                  <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>交易状态</div>
+                  <div
+                    style={{
+                      fontSize: rpFont.value,
+                      fontWeight: '500',
+                      color: displayData.tradeStatus === 1 ? '#4CAF50' : '#FF9800',
+                    }}
+                  >
                     {displayData.tradeStatus === 1 ? '正常交易' : '停牌'}
                   </div>
                 </div>
@@ -3276,66 +3107,47 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
           {(displayData?.peTtm !== null || displayData?.pbMrq !== null || displayData?.psTtm !== null || displayData?.pcfNcfTtm !== null) && (
             <div
               style={{
-                paddingTop: '12px',
-                marginTop: '20px',
+                paddingTop: rpSpace.large,
+                marginTop: rpSpace.block,
+                flexShrink: 0,
               }}
             >
               <div
                 style={{
-                  fontSize: '13px',
+                  fontSize: rpFont.sectionTitle,
                   fontWeight: '600',
                   color: '#ffffff',
-                  marginBottom: '10px',
+                  marginBottom: rpSpace.medium,
                 }}
               >
                 估值指标
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                {/* PE TTM */}
-                {displayData?.peTtm !== null && displayData?.peTtm !== undefined && (
-                  <div>
-                    <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>PE(TTM)</div>
-                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff' }}>
-                      {displayData.peTtm.toFixed(2)}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: rpGap.single }}>
+                {[
+                  { label: 'PE(TTM)', value: displayData?.peTtm },
+                  { label: 'PB(MRQ)', value: displayData?.pbMrq },
+                  { label: 'PS(TTM)', value: displayData?.psTtm },
+                  { label: 'PCF(TTM)', value: displayData?.pcfNcfTtm },
+                ].map((item) =>
+                  item.value !== null && item.value !== undefined ? (
+                    <div key={item.label}>
+                      <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>{item.label}</div>
+                      <div style={{ fontSize: rpFont.value, fontWeight: '500', color: '#ffffff' }}>
+                        {item.value.toFixed(2)}
+                      </div>
                     </div>
-                  </div>
+                  ) : null,
                 )}
-                {/* PB MRQ */}
-                {displayData?.pbMrq !== null && displayData?.pbMrq !== undefined && (
-                  <div>
-                    <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>PB(MRQ)</div>
-                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff' }}>
-                      {displayData.pbMrq.toFixed(2)}
-                    </div>
-                  </div>
-                )}
-                {/* PS TTM */}
-                {displayData?.psTtm !== null && displayData?.psTtm !== undefined && (
-                  <div>
-                    <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>PS(TTM)</div>
-                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff' }}>
-                      {displayData.psTtm.toFixed(2)}
-                    </div>
-                  </div>
-                )}
-                {/* PCF TTM */}
-                {displayData?.pcfNcfTtm !== null && displayData?.pcfNcfTtm !== undefined && (
-                  <div>
-                    <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>PCF(TTM)</div>
-                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff' }}>
-                      {displayData.pcfNcfTtm.toFixed(2)}
-                    </div>
-                  </div>
-                )}
-                {/* ST状态 */}
                 {displayData?.isSt !== null && displayData?.isSt !== undefined && (
                   <div>
-                    <div style={{ fontSize: '11px', color: '#999', marginBottom: '3px' }}>ST状态</div>
-                    <div style={{
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: displayData.isSt === 1 ? '#FF5722' : '#4CAF50'
-                    }}>
+                    <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>ST状态</div>
+                    <div
+                      style={{
+                        fontSize: rpFont.value,
+                        fontWeight: '500',
+                        color: displayData.isSt === 1 ? '#FF5722' : '#4CAF50',
+                      }}
+                    >
                       {displayData.isSt === 1 ? 'ST' : '正常'}
                     </div>
                   </div>
@@ -3347,16 +3159,19 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
           {/* 第三块：技术指标数据 */}
           <div
             style={{
-              paddingTop: '12px',
-              marginTop: '20px',
+              paddingTop: rpSpace.large,
+              marginTop: rpSpace.block,
+              flexShrink: 1,
+              overflowY: 'auto',
+              minHeight: 0,
             }}
           >
             <div
               style={{
-                fontSize: '13px',
+                fontSize: rpFont.sectionTitle,
                 fontWeight: '600',
                 color: '#ffffff',
-                marginBottom: '10px',
+                marginBottom: rpSpace.medium,
               }}
             >
               技术指标
@@ -3365,35 +3180,41 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
               const dataIndex = data.findIndex(d => d.time === displayData.time)
               if (dataIndex === -1) return null
 
+              const renderGrid = (content) => (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: rpGap.tight, fontSize: rpFont.secondary }}>
+                  {content}
+                </div>
+              )
+
               if (lowerIndicator === 'KDJ') {
                 const kdjData = calculateKDJ(data, 9, 3, 3)
                 const kVal = kdjData.k[dataIndex]?.value
                 const dVal = kdjData.d[dataIndex]?.value
                 const jVal = kdjData.j[dataIndex]?.value
-                return (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                return renderGrid(
+                  <>
                     <div><span style={{ color: '#2196F3' }}>K: {kVal ? kVal.toFixed(2) : '--'}</span></div>
                     <div><span style={{ color: '#FF9800' }}>D: {dVal ? dVal.toFixed(2) : '--'}</span></div>
                     <div><span style={{ color: '#9C27B0' }}>J: {jVal ? jVal.toFixed(2) : '--'}</span></div>
-                  </div>
+                  </>,
                 )
               } else if (lowerIndicator === 'MACD') {
                 const macdData = calculateMACD(data, 12, 26, 9)
                 const difVal = macdData.dif[dataIndex]?.value
                 const deaVal = macdData.dea[dataIndex]?.value
                 const macdVal = macdData.macd[dataIndex]?.value
-                return (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                return renderGrid(
+                  <>
                     <div><span style={{ color: '#2196F3' }}>DIF: {difVal !== null && difVal !== undefined ? difVal.toFixed(4) : '--'}</span></div>
                     <div><span style={{ color: '#FF9800' }}>DEA: {deaVal !== null && deaVal !== undefined ? deaVal.toFixed(4) : '--'}</span></div>
                     <div><span style={{ color: macdVal !== null && macdVal !== undefined && macdVal > 0 ? '#ef232a' : '#14b143' }}>MACD: {macdVal !== null && macdVal !== undefined ? macdVal.toFixed(4) : '--'}</span></div>
-                  </div>
+                  </>,
                 )
               } else if (lowerIndicator === 'RSI') {
                 const rsiData = calculateRSI(data, 14)
                 const rsiVal = rsiData[dataIndex]?.value
                 return (
-                  <div style={{ fontSize: '12px' }}>
+                  <div style={{ fontSize: rpFont.secondary }}>
                     <span style={{ color: '#2196F3' }}>RSI: {rsiVal ? rsiVal.toFixed(2) : '--'}</span>
                   </div>
                 )
@@ -3401,7 +3222,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                 const wrData = calculateWR(data, 14)
                 const wrVal = wrData[dataIndex]?.value
                 return (
-                  <div style={{ fontSize: '12px' }}>
+                  <div style={{ fontSize: rpFont.secondary }}>
                     <span style={{ color: '#2196F3' }}>WR: {wrVal ? wrVal.toFixed(2) : '--'}</span>
                   </div>
                 )
@@ -3410,18 +3231,18 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                 const pdiVal = dmiData.pdi[dataIndex]?.value
                 const mdiVal = dmiData.mdi[dataIndex]?.value
                 const adxVal = dmiData.adx[dataIndex]?.value
-                return (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                return renderGrid(
+                  <>
                     <div><span style={{ color: '#2196F3' }}>PDI: {pdiVal ? pdiVal.toFixed(2) : '--'}</span></div>
                     <div><span style={{ color: '#FF9800' }}>MDI: {mdiVal ? mdiVal.toFixed(2) : '--'}</span></div>
                     <div><span style={{ color: '#9C27B0' }}>ADX: {adxVal ? adxVal.toFixed(2) : '--'}</span></div>
-                  </div>
+                  </>,
                 )
               } else if (lowerIndicator === 'CCI') {
                 const cciData = calculateCCI(data, 14)
                 const cciVal = cciData[dataIndex]?.value
                 return (
-                  <div style={{ fontSize: '12px' }}>
+                  <div style={{ fontSize: rpFont.secondary }}>
                     <span style={{ color: '#2196F3' }}>CCI: {cciVal ? cciVal.toFixed(2) : '--'}</span>
                   </div>
                 )
@@ -3429,21 +3250,20 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                 const biasData = calculateBIAS(data, 6)
                 const biasVal = biasData[dataIndex]?.value
                 return (
-                  <div style={{ fontSize: '12px' }}>
+                  <div style={{ fontSize: rpFont.secondary }}>
                     <span style={{ color: '#2196F3' }}>BIAS: {biasVal ? biasVal.toFixed(2) : '--'}%</span>
                   </div>
                 )
               }
               return null
             })() : (
-              <div style={{ fontSize: '11px', color: '#666' }}>
+              <div style={{ fontSize: rpFont.label, color: '#666' }}>
                 未选择指标
               </div>
             )}
           </div>
         </div>
       </div>
-
     </div>
   )
 }

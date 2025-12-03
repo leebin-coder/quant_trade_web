@@ -5,6 +5,7 @@
   display: flex;
   flex-direction: column;
   background-color: rgb(8, 8, 8);
+  overflow: hidden;
 }
 
 /* 顶部五大模块切换 */
@@ -164,7 +165,7 @@
 /* Tab内容容器 */
 .tab-content-container {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   background: rgb(8, 8, 8);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -212,7 +213,8 @@
   height: calc(100% - 8px);
   margin-bottom: 8px;
   position: relative;
-  overflow: hidden; /* 改为hidden，避免滚动条影响加载动画 */
+  overflow-y: auto;
+  overflow-x: hidden;
   box-sizing: border-box;
   background: rgb(28, 28, 28);
   border-radius: 4px;
@@ -229,6 +231,17 @@
   width: 100%;
   height: 100%;
   gap: 16px;
+}
+
+.trading-chart-wrapper {
+  width: 100%;
+  position: relative;
+}
+
+.trading-chart-content {
+  width: 100%;
+  height: 100%;
+  transition: opacity 0.4s ease;
 }
 
 /* 图表区域 - 动态高度 */
@@ -463,4 +476,3 @@
     inset 0 1px 1px rgba(255, 255, 255, 0.05);
   height: 8px;
 }
-
