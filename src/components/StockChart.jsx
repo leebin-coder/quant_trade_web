@@ -50,6 +50,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
   const [selectedData, setSelectedData] = useState(null) // 当前悬停或选中的K线数据
   const [indicators, setIndicators] = useState([]) // 选中的上方技术指标
   const [lowerIndicator, setLowerIndicator] = useState('KDJ') // 选中的下方技术指标,默认选中KDJ(单选)
+  const [isLowerDropdownOpen, setIsLowerDropdownOpen] = useState(false)
   const indicatorSeriesRefs = useRef({}) // 存储上方技术指标系列的引用
   const lowerIndicatorSeriesRefs = useRef({}) // 存储下方技术指标系列的引用
   const chartHeaderRef = useRef(null)
@@ -1462,7 +1463,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     ? Math.max(height - measuredHeaderHeight - 16, 0)
     : null
   const chartAreaHeight = bodyHeight ?? numericHeight ?? 0
-  const SELECTOR_PADDING = 12
+  const SELECTOR_PADDING = 0
   let lowerSelectorTop
   if (chartAreaHeight) {
     const volumeBottomPos = chartAreaHeight * (1 - CHART_LAYOUT.volumeBottom)
@@ -2867,45 +2868,114 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
             </ConfigProvider>
           </div>
 
-          {/* 技术指标选择器 - 下拉单选置于指标图左上 */}
-          <ConfigProvider
-            theme={{
-              components: {
-                Select: {
-                  colorBgContainer: 'rgba(8, 8, 8, 0.75)',
-                  colorBorder: 'rgba(255, 255, 255, 0.2)',
-                  colorText: '#ffffff',
-                  colorTextPlaceholder: 'rgba(255, 255, 255, 0.4)',
-                  optionSelectedColor: '#1890ff',
-                  controlHeightSM: 28,
-                  borderRadiusSM: 6,
-                },
-              },
+          {/* 技术指标选择器 - 自定义下拉置于指标图左上 */}
+          <div
+            style={{
+              position: 'absolute',
+              top: `${lowerSelectorTop}px`,
+              left: '10px',
+              zIndex: 10,
             }}
           >
-            <Select
-              size="small"
-              value={lowerIndicator}
-              onChange={(value) => setLowerIndicator(value)}
-              options={lowerIndicatorOptions}
-              dropdownMatchSelectWidth={false}
+            <div
+              onClick={() => setIsLowerDropdownOpen((open) => !open)}
               style={{
-                position: 'absolute',
-                top: `${lowerSelectorTop}px`,
-                left: '10px',
-                zIndex: 10,
-                width: 'fit-content',
-                minWidth: 0,
-                paddingInline: 4,
-                textAlign: 'center',
-                background: 'rgba(8, 8, 8, 0.65)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                width: 55,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                padding: '6px 12px',
                 borderRadius: 6,
+                border: '1px solid rgba(255, 255, 255, 0.4)',
+                background: 'rgba(8, 8, 8, 0.78)',
+                color: '#ffffff',
+                fontSize: scalePx(14),
+                cursor: 'pointer',
+                userSelect: 'none',
               }}
-              dropdownStyle={{ minWidth: 120 }}
-              getPopupContainer={(trigger) => trigger.parentNode}
-            />
-          </ConfigProvider>
+            >
+              <span style={{ color: lowerIndicatorItems.find(item => item.value === lowerIndicator)?.color || '#ffffff', fontWeight: 600 }}>
+                {lowerIndicator}
+              </span>
+              <span style={{ fontSize: '10px', opacity: 0.8 }}>
+                {isLowerDropdownOpen ? '▲' : '▼'}
+              </span>
+            </div>
+            {isLowerDropdownOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: `calc(100% + 8px)`,
+                  borderRadius: 6,
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  background: 'rgba(8, 8, 8, 0.92)',
+                  backdropFilter: 'blur(6px)',
+                  width: 55,
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)',
+                  padding: '6px 0',
+                }}
+              >
+                {lowerIndicatorItems.map((item) => (
+                    <div
+                      key={item.value}
+                      onClick={() => {
+                        setLowerIndicator(item.value)
+                        setIsLowerDropdownOpen(false)
+                      }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4,
+                      padding: '8px 10px',
+                      color: item.value === lowerIndicator ? item.color : '#ffffff',
+                      fontSize: rpFont.secondary,
+                      fontWeight: item.value === lowerIndicator ? 600 : 400,
+                      cursor: 'pointer',
+                      background: item.value === lowerIndicator ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                      transition: 'background 0.2s ease',
+                    }}
+                    >
+                      <span style={{ color: item.color, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {item.label}
+                        <Popover
+                          overlayInnerStyle={{
+                            backgroundColor: '#1f1f1f',
+                            color: '#ffffff',
+                            border: '1px solid #3a3a3a',
+                            boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
+                          }}
+                          content={
+                            <div className="indicator-popover-wrapper">
+                              <button
+                                className="indicator-learn-more"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onOpenKnowledge?.(item.docId)
+                                }}
+                              >
+                                Learn More <RightOutlined style={{ fontSize: '10px' }} />
+                              </button>
+                              <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
+                                <ReactMarkdown>{item.description}</ReactMarkdown>
+                              </div>
+                            </div>
+                          }
+                          trigger="hover"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <QuestionCircleOutlined
+                            style={{ fontSize: '11px', cursor: 'help', color: item.color }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </Popover>
+                      </span>
+                    </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* K线图 */}
           <div
@@ -3124,14 +3194,46 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: rpGap.single }}>
                 {[
-                  { label: 'PE(TTM)', value: displayData?.peTtm },
-                  { label: 'PB(MRQ)', value: displayData?.pbMrq },
-                  { label: 'PS(TTM)', value: displayData?.psTtm },
-                  { label: 'PCF(TTM)', value: displayData?.pcfNcfTtm },
+                  { label: 'PE(TTM)', value: displayData?.peTtm, docId: indicatorDocsId.PE_TTM, description: indicatorDescriptions.PE_TTM },
+                  { label: 'PB(MRQ)', value: displayData?.pbMrq, docId: indicatorDocsId.PB_MRQ, description: indicatorDescriptions.PB_MRQ },
+                  { label: 'PS(TTM)', value: displayData?.psTtm, docId: indicatorDocsId.PS_TTM, description: indicatorDescriptions.PS_TTM },
+                  { label: 'PCF(TTM)', value: displayData?.pcfNcfTtm, docId: indicatorDocsId.PCF_TTM, description: indicatorDescriptions.PCF_TTM },
                 ].map((item) =>
                   item.value !== null && item.value !== undefined ? (
                     <div key={item.label}>
-                      <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>{item.label}</div>
+                      <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span>{item.label}</span>
+                        <Popover
+                          overlayInnerStyle={{
+                            backgroundColor: '#1f1f1f',
+                            color: '#ffffff',
+                            border: '1px solid #3a3a3a',
+                            boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
+                          }}
+                          content={
+                            <div className="indicator-popover-wrapper">
+                              <button
+                                className="indicator-learn-more"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onOpenKnowledge?.(item.docId)
+                                }}
+                              >
+                                Learn More <RightOutlined style={{ fontSize: '10px' }} />
+                              </button>
+                              <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
+                                <ReactMarkdown>{item.description}</ReactMarkdown>
+                              </div>
+                            </div>
+                          }
+                          trigger="hover"
+                        >
+                          <QuestionCircleOutlined
+                            style={{ fontSize: '11px', cursor: 'help', color: '#939393' }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </Popover>
+                      </div>
                       <div style={{ fontSize: rpFont.value, fontWeight: '500', color: '#ffffff' }}>
                         {item.value.toFixed(2)}
                       </div>
