@@ -16,15 +16,15 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://www.leebean.top',
+        target: 'http://localhost;8080',
         changeOrigin: true,
       },
       '/auth': {
-        target: 'http://www.leebean.top',
+        target: 'http://localhost;8080',
         changeOrigin: true,
       },
       '/user': {
-        target: 'http://www.leebean.top',
+        target: 'http://localhost;8080',
         changeOrigin: true,
       },
     },
