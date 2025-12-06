@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 
 const DEFAULT_RECONNECT_DELAY = 3000
-const DEFAULT_PORT = '8080'
+const DEFAULT_PORT = ''
 const DEFAULT_PATH = '/ws/ticks'
 
 const resolveEnv = () => {
@@ -17,7 +17,10 @@ const resolveEnv = () => {
     : Object.prototype.hasOwnProperty.call(env, 'VITE_QUANT_MARKET_WS_PORT')
       ? env.VITE_QUANT_MARKET_WS_PORT
       : undefined
-  const port = rawPort === '' ? '' : (rawPort || DEFAULT_PORT)
+  const defaultPort = typeof window !== 'undefined'
+    ? (window.location.port || '')
+    : DEFAULT_PORT
+  const port = rawPort === '' ? '' : (rawPort || defaultPort)
   const path = env.VITE_QUANT_GATEWAY_WS_PATH || env.VITE_QUANT_MARKET_WS_PATH || DEFAULT_PATH
 
   if (!host) {
