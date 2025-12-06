@@ -11,6 +11,10 @@ import DMI_MD from './DMI.md?raw'
 import CCI_MD from './CCI.md?raw'
 import BIAS_MD from './BIAS.md?raw'
 import ADJUST_MD from './ADJUST.md?raw'
+import PE_TTM_MD from './PE_TTM.md?raw'
+import PB_MRQ_MD from './PB_MRQ.md?raw'
+import PS_TTM_MD from './PS_TTM.md?raw'
+import PCF_TTM_MD from './PCF_TTM.md?raw'
 
 // 指标文档映射配置
 export const indicatorDescriptions = {
@@ -30,6 +34,10 @@ export const indicatorDescriptions = {
   ADJUST_NONE: ADJUST_MD,
   ADJUST_QFQ: ADJUST_MD,
   ADJUST_HFQ: ADJUST_MD,
+  PE_TTM: PE_TTM_MD,
+  PB_MRQ: PB_MRQ_MD,
+  PS_TTM: PS_TTM_MD,
+  PCF_TTM: PCF_TTM_MD,
 }
 
 // 指标知识库文档节点 ID 配置
@@ -50,6 +58,10 @@ export const indicatorDocsId = {
   ADJUST_NONE: 'indicator_adjust',
   ADJUST_QFQ: 'indicator_adjust',
   ADJUST_HFQ: 'indicator_adjust',
+  PE_TTM: 'indicator_pe_ttm',
+  PB_MRQ: 'indicator_pb_mrq',
+  PS_TTM: 'indicator_ps_ttm',
+  PCF_TTM: 'indicator_pcf_ttm',
 }
 
 // 弹出框统一配置

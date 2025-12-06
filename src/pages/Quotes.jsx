@@ -5,6 +5,7 @@ import StockChart from '../components/StockChart'
 import MarketOverview from '../components/MarketOverview'
 import { stockDailyAPI, stockCompanyAPI } from '../services/api'
 import { useKnowledgeBase } from '../contexts/KnowledgeBaseContext'
+import { useStockTicksStream } from '../hooks/useStockTicksStream'
 import './Quotes.css'
 
 function Quotes() {
@@ -29,6 +30,13 @@ function Quotes() {
   const tradingTabsRef = useRef(null)
   const tabContentRef = useRef(null)
   const chartSectionRef = useRef(null)
+  const isTradingTabActive = mainModule === 'stock' && activeKey === 'trading'
+  const shouldStreamTicks = isTradingTabActive && period === 'minute' && Boolean(selectedStock?.stockCode)
+
+  useStockTicksStream({
+    stockCode: selectedStock?.stockCode,
+    enabled: shouldStreamTicks,
+  })
 
   const handleChartHeaderHeight = useCallback((height) => {
     setChartHeaderHeight(prev => {
@@ -359,11 +367,14 @@ function Quotes() {
 
   // 处理时间周期变化
   const handlePeriodChange = (newPeriod) => {
+    if (period === newPeriod) return
     setPeriod(newPeriod)
 
-    // 分时数据需要后端支持
     if (newPeriod === 'minute') {
-      console.log('分时数据需要后端API支持')
+      if (!selectedStock?.stockCode) {
+        console.warn('🔌 请选择股票后再查看分时数据')
+      }
+      console.log('🕒 切换到分时视图，等待 WebSocket tick 数据')
       setChartData([])
       return
     }

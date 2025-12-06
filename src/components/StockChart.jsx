@@ -2272,7 +2272,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
               >
                 <Radio.Button
                   value="minute"
-                  disabled
                   style={{
                     margin: 0,
                     padding: '2px 6px',
@@ -2281,10 +2280,9 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     fontWeight: 500,
                     height: '28px',
                     lineHeight: '24px',
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    color: 'rgba(255, 255, 255, 0.3)',
-                    cursor: 'not-allowed',
+                    background: period === 'minute' ? 'rgba(24, 144, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    border: period === 'minute' ? '1px solid #1890ff' : '1px solid rgba(255, 255, 255, 0.1)',
+                    color: period === 'minute' ? '#1890ff' : 'rgba(255, 255, 255, 0.65)',
                   }}
                 >
                   分时
