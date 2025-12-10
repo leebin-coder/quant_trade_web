@@ -98,11 +98,6 @@ export const knowledgeBaseConfig = [
                         url: "https://www.yuque.com/u32034952/wxggbp/indicator-bias?singleDoc#"
                     }
                 ]
-            },
-            {
-                id: 'finance_websocket_ticks',
-                title: 'WebSocket Tick Streaming 接入',
-                url: "/docs/websocket-ticks.html"
             }
         ]
     },
