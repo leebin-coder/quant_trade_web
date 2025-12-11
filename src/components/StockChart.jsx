@@ -1,10 +1,25 @@
-import { useEffect, useRef, useState, useLayoutEffect } from 'react'
+import { useEffect, useRef, useState, useLayoutEffect, Fragment, useMemo } from 'react'
 import { createChart } from 'lightweight-charts'
 import { Select, ConfigProvider, Checkbox, Radio, Popover, message, Tooltip } from 'antd'
 import { InfoCircleOutlined, EnvironmentOutlined, CopyOutlined, QuestionCircleOutlined, RightOutlined } from '@ant-design/icons'
 import ReactMarkdown from 'react-markdown'
 import { indicatorDescriptions, popoverConfig, indicatorDocsId } from '../docs/indicators/index'
+import IntradayChart from './IntradayChart'
 import './StockChart.css'
+
+const INTRADAY_STATUS_TEXT = {
+  trading: '交易中',
+  rest: '休息时段',
+  non_trading: '非交易时段',
+}
+
+const CONNECTION_STATE_TEXT = {
+  connected: 'WebSocket 已连接',
+  connecting: '正在建立连接',
+  reconnecting: '重试连接中',
+  disconnected: 'WebSocket 已断开',
+  idle: '等待激活',
+}
 
 /**
  * TradingView Lightweight Charts - K线图 + 成交量图组件
@@ -22,7 +37,7 @@ import './StockChart.css'
  * @param {Function} props.onOpenKnowledge - 打开知识库回调，参数为文档节点ID
  * @param {Function} props.onHeaderHeightChange - 图表标题区域高度变化回调
  */
-function StockChart({ data = [], height = 600, title = '', stockInfo = null, companyDetail = null, period = 'daily', onPeriodChange, adjustFlag = 3, onAdjustFlagChange, onChartReady, onOpenKnowledge, onHeaderHeightChange }) {
+function StockChart({ data = [], height = 600, title = '', stockInfo = null, companyDetail = null, period = 'daily', onPeriodChange, adjustFlag = 3, onAdjustFlagChange, onChartReady, onOpenKnowledge, onHeaderHeightChange, intradayTicks = [], intradayStatus = 'non_trading', intradayStatusLabel = '', intradayBoard = null, intradayConnectionState = 'idle' }) {
   const chartContainerRef = useRef(null)
   const volumeChartContainerRef = useRef(null) // 中间成交量图表容器
   const lowerChartContainerRef = useRef(null) // 下方指标图表容器
@@ -45,6 +60,26 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     lowerIndicators: false,  // 下方指标是否渲染完成
   })
   const renderStatusRef = useRef(renderStatus)
+  const isIntradayMode = period === 'minute'
+  const intradayPointCount = Array.isArray(intradayTicks) ? intradayTicks.length : 0
+  const candleCount = Array.isArray(data) ? data.length : 0
+
+  useEffect(() => {
+    if (!isIntradayMode) return
+    console.log('[StockChart] 分时图渲染', {
+      points: intradayPointCount,
+      status: intradayStatus,
+    })
+  }, [isIntradayMode, intradayPointCount, intradayStatus])
+
+  useEffect(() => {
+    if (isIntradayMode) return
+    console.log('[StockChart] K线渲染', {
+      period,
+      candles: candleCount,
+    })
+  }, [isIntradayMode, candleCount, period])
+  const intradayChartHeight = Math.max(320, (height || 520) - 120)
   // 将 adjustFlag (1,2,3) 映射为 adjustType ('hfq','qfq','none')
   const adjustType = adjustFlag === 1 ? 'hfq' : adjustFlag === 2 ? 'qfq' : 'none'
   const [selectedData, setSelectedData] = useState(null) // 当前悬停或选中的K线数据
@@ -74,6 +109,32 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
   }
   const numericHeight = typeof height === 'number' ? height : 0
   const lowerSelectorFallback = Math.max(0, numericHeight * CHART_LAYOUT.lowerTop + 12)
+  const connectionIndicator = useMemo(() => {
+    const statusCode = intradayStatus || 'non_trading'
+    const defaultLabel = intradayStatusLabel || INTRADAY_STATUS_TEXT[statusCode] || '非交易时段'
+    let label = defaultLabel
+    let color = '#bfbfbf'
+    let blink = false
+
+    if (intradayConnectionState === 'reconnecting' || intradayConnectionState === 'connecting') {
+      color = '#7cff8a'
+      blink = true
+      label = '连接中...'
+    } else if (intradayConnectionState === 'disconnected') {
+      color = '#ff4d4f'
+    } else if (intradayConnectionState === 'connected' && statusCode === 'trading') {
+      color = '#52ff7c'
+      blink = true
+    } else if (intradayConnectionState === 'connected') {
+      color = '#d9d9d9'
+    }
+
+    return {
+      label,
+      color,
+      blink,
+    }
+  }, [intradayConnectionState, intradayStatus, intradayStatusLabel])
 
   useLayoutEffect(() => {
     const element = chartHeaderRef.current
@@ -127,7 +188,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                      renderStatus.lowerIndicators
 
     if (allReady) {
-      console.log('✅ 所有部分渲染完成，通知父组件')
       setTimeout(() => {
         onChartReady?.()
       }, 100)
@@ -154,7 +214,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
         const containerWidth = chartContainerRef.current.clientWidth || 1000
         const containerHeight = chartContainerRef.current.clientHeight || 500
 
-        console.log('📊 图表初始化 - 容器尺寸:', { containerWidth, containerHeight })
 
         // 创建图表 (v3.8 API)
         const chart = createChart(chartContainerRef.current, {
@@ -336,7 +395,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
           resizeObserver.observe(chartContainerRef.current)
         }
       } catch (error) {
-        console.error('Failed to create chart:', error)
       }
     }, 100)
 
@@ -452,7 +510,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
           })
         }
       } catch (error) {
-        console.error('Failed to create lower chart:', error)
       }
     }, 100)
 
@@ -913,26 +970,17 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       // 应用标记
       candlestickSeriesRef.current.setMarkers(markers)
     } catch (error) {
-      console.error('更新最高最低价标记失败:', error)
     }
   }
 
   // 更新数据
   useEffect(() => {
-    console.log('📈 更新数据 useEffect 触发', {
-      isChartReady,
-      hasCandlestickSeries: !!candlestickSeriesRef.current,
-      dataLength: data?.length
-    })
-
     if (!isChartReady || !candlestickSeriesRef.current) {
-      console.log('⚠️ 图表未准备好或系列未创建')
       return
     }
 
     // 如果没有数据，清空图表
     if (!data || data.length === 0) {
-      console.log('⚠️ 没有数据，清空图表')
       // 清空K线数据，只显示XY轴
       candlestickSeriesRef.current.setData([])
       if (volumeSeriesRef.current) {
@@ -945,7 +993,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       // 标记K线和成交量都已完成（空数据）
       requestAnimationFrame(() => {
         setTimeout(() => {
-          console.log('✅ 空图表渲染完成')
           setRenderStatus(prev => ({
             ...prev,
             candlestick: true,
@@ -957,7 +1004,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     }
 
     try {
-      console.log('✅ 开始设置K线数据，数据条数:', data.length)
 
       // 设置K线数据
       const candlestickData = data.map(item => ({
@@ -969,7 +1015,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       }))
 
       candlestickSeriesRef.current.setData(candlestickData)
-      console.log('✅ K线数据设置成功')
 
       // 数据加载完成后，初始更新最高最低价标记
       setTimeout(() => {
@@ -987,7 +1032,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       // 使用 requestAnimationFrame 确保浏览器完成渲染
       requestAnimationFrame(() => {
         setTimeout(() => {
-          console.log('✅ K线数据渲染完成')
           setRenderStatus(prev => ({
             ...prev,
             candlestick: true,
@@ -995,7 +1039,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
         }, 100)
       })
     } catch (error) {
-      console.error('❌ Failed to set chart data:', error)
       // 即使出错也要标记完成
       setRenderStatus(prev => ({
         ...prev,
@@ -1026,7 +1069,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       // 标记成交量渲染完成
       requestAnimationFrame(() => {
         setTimeout(() => {
-          console.log('✅ 成交量数据渲染完成')
           setRenderStatus(prev => ({
             ...prev,
             volume: true,
@@ -1034,7 +1076,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
         }, 100)
       })
     } catch (error) {
-      console.error('Failed to set volume data:', error)
       setRenderStatus(prev => ({
         ...prev,
         volume: true,
@@ -1165,7 +1206,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     if (!data || data.length === 0) {
       requestAnimationFrame(() => {
         setTimeout(() => {
-          console.log('✅ 上方指标清空完成（无数据）')
           setRenderStatus(prev => ({
             ...prev,
             upperIndicators: true,
@@ -1259,7 +1299,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     // 标记上方指标渲染完成
     requestAnimationFrame(() => {
       setTimeout(() => {
-        console.log('✅ 上方指标渲染完成')
         setRenderStatus(prev => ({
           ...prev,
           upperIndicators: true,
@@ -1286,7 +1325,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     if (!data || data.length === 0 || !lowerIndicator) {
       requestAnimationFrame(() => {
         setTimeout(() => {
-          console.log('✅ 下方指标清空完成（无数据）')
           setRenderStatus(prev => ({
             ...prev,
             lowerIndicators: true,
@@ -1445,7 +1483,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     // 标记下方指标渲染完成
     requestAnimationFrame(() => {
       setTimeout(() => {
-        console.log('✅ 下方指标渲染完成')
         setRenderStatus(prev => ({
           ...prev,
           lowerIndicators: true,
@@ -1455,7 +1492,6 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
   }, [lowerIndicator, data, isChartReady])
 
   useEffect(() => {
-    console.log('📏 StockChart received height:', height, 'header:', measuredHeaderHeight)
   }, [height, measuredHeaderHeight])
 
   const containerHeight = typeof height === 'number' ? `${Math.max(height, 0)}px` : '100%'
@@ -2161,7 +2197,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       const dVal = kdjData.d[dataIndex]?.value
                       const jVal = kdjData.j[dataIndex]?.value
                       return (
-                        <>
+                        <Fragment>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
                             <span style={{ color: '#2196F3', fontSize: '10px', fontWeight: '500' }}>K:{kVal ? kVal.toFixed(2) : '--'}</span>
                           </div>
@@ -2171,7 +2207,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
                             <span style={{ color: '#9C27B0', fontSize: '10px', fontWeight: '500' }}>J:{jVal ? jVal.toFixed(2) : '--'}</span>
                           </div>
-                        </>
+                        </Fragment>
                       )
                     } else if (lowerIndicator === 'MACD') {
                       const macdData = calculateMACD(data, 12, 26, 9)
@@ -2179,7 +2215,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       const deaVal = macdData.dea[dataIndex]?.value
                       const macdVal = macdData.macd[dataIndex]?.value
                       return (
-                        <>
+                        <Fragment>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
                             <span style={{ color: '#2196F3', fontSize: '10px', fontWeight: '500' }}>DIF:{difVal !== null && difVal !== undefined ? difVal.toFixed(4) : '--'}</span>
                           </div>
@@ -2189,7 +2225,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
                             <span style={{ color: macdVal !== null && macdVal !== undefined && macdVal > 0 ? '#ef232a' : '#14b143', fontSize: '10px', fontWeight: '500' }}>MACD:{macdVal !== null && macdVal !== undefined ? macdVal.toFixed(4) : '--'}</span>
                           </div>
-                        </>
+                        </Fragment>
                       )
                     } else if (lowerIndicator === 'RSI') {
                       const rsiData = calculateRSI(data, 14)
@@ -2213,7 +2249,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                       const mdiVal = dmiData.mdi[dataIndex]?.value
                       const adxVal = dmiData.adx[dataIndex]?.value
                       return (
-                        <>
+                        <Fragment>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
                             <span style={{ color: '#2196F3', fontSize: '10px', fontWeight: '500' }}>PDI:{pdiVal ? pdiVal.toFixed(2) : '--'}</span>
                           </div>
@@ -2223,7 +2259,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
                             <span style={{ color: '#9C27B0', fontSize: '10px', fontWeight: '500' }}>ADX:{adxVal ? adxVal.toFixed(2) : '--'}</span>
                           </div>
-                        </>
+                        </Fragment>
                       )
                     } else if (lowerIndicator === 'CCI') {
                       const cciData = calculateCCI(data, 14)
@@ -2584,26 +2620,35 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
               maxWidth: '60%',
             }}
           >
-            <ConfigProvider
-              theme={{
-                components: {
-                  Checkbox: {
-                    colorPrimary: '#1890ff',
-                    colorPrimaryHover: '#40a9ff',
-                    fontSize: 12,
+            {isIntradayMode ? (
+              <div className="connection-indicator">
+                <span
+                  className={`connection-dot${connectionIndicator.blink ? ' blink' : ''}`}
+                  style={{ backgroundColor: connectionIndicator.color }}
+                />
+                <span className="connection-label">{connectionIndicator.label}</span>
+              </div>
+            ) : (
+              <ConfigProvider
+                theme={{
+                  components: {
+                    Checkbox: {
+                      colorPrimary: '#1890ff',
+                      colorPrimaryHover: '#40a9ff',
+                      fontSize: 12,
+                    },
                   },
-                },
-              }}
-            >
-              <Checkbox.Group
-                value={indicators}
-                onChange={setIndicators}
-                style={{
-                  display: 'flex',
-                  gap: '8px',
-                  flexWrap: 'wrap',
                 }}
               >
+                <Checkbox.Group
+                  value={indicators}
+                  onChange={setIndicators}
+                  style={{
+                    display: 'flex',
+                    gap: '8px',
+                    flexWrap: 'wrap',
+                  }}
+                >
                 <Checkbox
                   className="indicator-checkbox"
                   value="MA5"
@@ -2864,116 +2909,119 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                 </Checkbox>
               </Checkbox.Group>
             </ConfigProvider>
+            )}
           </div>
 
           {/* 技术指标选择器 - 自定义下拉置于指标图左上 */}
-          <div
-            style={{
-              position: 'absolute',
-              top: `${lowerSelectorTop}px`,
-              left: '10px',
-              zIndex: 10,
-            }}
-          >
+          {!isIntradayMode && (
             <div
-              onClick={() => setIsLowerDropdownOpen((open) => !open)}
               style={{
-                width: 55,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                borderRadius: 6,
-                border: '1px solid rgba(255, 255, 255, 0.4)',
-                background: 'rgba(8, 8, 8, 0.78)',
-                color: '#ffffff',
-                fontSize: scalePx(14),
-                cursor: 'pointer',
-                userSelect: 'none',
+                position: 'absolute',
+                top: `${lowerSelectorTop}px`,
+                left: '10px',
+                zIndex: 10,
               }}
             >
-              <span style={{ color: lowerIndicatorItems.find(item => item.value === lowerIndicator)?.color || '#ffffff', fontWeight: 600 }}>
-                {lowerIndicator}
-              </span>
-              <span style={{ fontSize: '10px', opacity: 0.8 }}>
-                {isLowerDropdownOpen ? '▲' : '▼'}
-              </span>
-            </div>
-            {isLowerDropdownOpen && (
               <div
+                onClick={() => setIsLowerDropdownOpen((open) => !open)}
                 style={{
-                  position: 'absolute',
-                  bottom: `calc(100% + 8px)`,
-                  borderRadius: 6,
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
-                  background: 'rgba(8, 8, 8, 0.92)',
-                  backdropFilter: 'blur(6px)',
                   width: 55,
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)',
-                  padding: '6px 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  border: '1px solid rgba(255, 255, 255, 0.4)',
+                  background: 'rgba(8, 8, 8, 0.78)',
+                  color: '#ffffff',
+                  fontSize: scalePx(14),
+                  cursor: 'pointer',
+                  userSelect: 'none',
                 }}
               >
-                {lowerIndicatorItems.map((item) => (
-                    <div
-                      key={item.value}
-                      onClick={() => {
-                        setLowerIndicator(item.value)
-                        setIsLowerDropdownOpen(false)
-                      }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 4,
-                      padding: '8px 10px',
-                      color: item.value === lowerIndicator ? item.color : '#ffffff',
-                      fontSize: rpFont.secondary,
-                      fontWeight: item.value === lowerIndicator ? 600 : 400,
-                      cursor: 'pointer',
-                      background: item.value === lowerIndicator ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-                      transition: 'background 0.2s ease',
-                    }}
-                    >
-                      <span style={{ color: item.color, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {item.label}
-                        <Popover
-                          overlayInnerStyle={{
-                            backgroundColor: '#1f1f1f',
-                            color: '#ffffff',
-                            border: '1px solid #3a3a3a',
-                            boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
-                          }}
-                          content={
-                            <div className="indicator-popover-wrapper">
-                              <button
-                                className="indicator-learn-more"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  onOpenKnowledge?.(item.docId)
-                                }}
-                              >
-                                Learn More <RightOutlined style={{ fontSize: '10px' }} />
-                              </button>
-                              <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
-                                <ReactMarkdown>{item.description}</ReactMarkdown>
-                              </div>
-                            </div>
-                          }
-                          trigger="hover"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <QuestionCircleOutlined
-                            style={{ fontSize: '11px', cursor: 'help', color: item.color }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </Popover>
-                      </span>
-                    </div>
-                ))}
+                <span style={{ color: lowerIndicatorItems.find(item => item.value === lowerIndicator)?.color || '#ffffff', fontWeight: 600 }}>
+                  {lowerIndicator}
+                </span>
+                <span style={{ fontSize: '10px', opacity: 0.8 }}>
+                  {isLowerDropdownOpen ? '▲' : '▼'}
+                </span>
               </div>
-            )}
-          </div>
+              {isLowerDropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: `calc(100% + 8px)`,
+                    borderRadius: 6,
+                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                    background: 'rgba(8, 8, 8, 0.92)',
+                    backdropFilter: 'blur(6px)',
+                    width: 55,
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)',
+                    padding: '6px 0',
+                  }}
+                >
+                  {lowerIndicatorItems.map((item) => (
+                      <div
+                        key={item.value}
+                        onClick={() => {
+                          setLowerIndicator(item.value)
+                          setIsLowerDropdownOpen(false)
+                        }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4,
+                        padding: '8px 10px',
+                        color: item.value === lowerIndicator ? item.color : '#ffffff',
+                        fontSize: rpFont.secondary,
+                        fontWeight: item.value === lowerIndicator ? 600 : 400,
+                        cursor: 'pointer',
+                        background: item.value === lowerIndicator ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                        transition: 'background 0.2s ease',
+                      }}
+                      >
+                        <span style={{ color: item.color, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {item.label}
+                          <Popover
+                            overlayInnerStyle={{
+                              backgroundColor: '#1f1f1f',
+                              color: '#ffffff',
+                              border: '1px solid #3a3a3a',
+                              boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)',
+                            }}
+                            content={
+                              <div className="indicator-popover-wrapper">
+                                <button
+                                  className="indicator-learn-more"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onOpenKnowledge?.(item.docId)
+                                  }}
+                                >
+                                  Learn More <RightOutlined style={{ fontSize: '10px' }} />
+                                </button>
+                                <div className="indicator-popover-content" style={{ width: popoverConfig.width, color: '#ffffff', fontSize: popoverConfig.fontSize, lineHeight: popoverConfig.lineHeight }}>
+                                  <ReactMarkdown>{item.description}</ReactMarkdown>
+                                </div>
+                              </div>
+                            }
+                            trigger="hover"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <QuestionCircleOutlined
+                              style={{ fontSize: '11px', cursor: 'help', color: item.color }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </Popover>
+                        </span>
+                      </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* K线图 */}
           <div
@@ -2983,8 +3031,19 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
               height: '100%',
               flex: 1,
               minHeight: 0,
+              display: isIntradayMode ? 'none' : 'block',
             }}
           />
+          {isIntradayMode && (
+            <div className="intraday-proxy-chart">
+              <IntradayChart
+                data={intradayTicks}
+                height={intradayChartHeight}
+                stockInfo={stockInfo}
+                statusLabel={intradayStatusLabel || INTRADAY_STATUS_TEXT[intradayStatus] || ''}
+              />
+            </div>
+          )}
         </div>
 
         {/* 右侧：数据看板 - 固定200px，分为三个区块 */}
@@ -2998,179 +3057,180 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
             height: '100%',
           }}
         >
-          {/* 第一块：K线数据 */}
-          <div style={{ paddingTop: '0px', flexShrink: 0 }}>
-            {/* 交易日期 */}
-            <div
-              style={{
-                fontSize: rpFont.heading,
-                fontWeight: 'bold',
-                color: '#ffffff',
-                marginBottom: rpSpace.large,
-                textAlign: 'left',
-              }}
-            >
-              {displayData?.time || '--'}
+          {isIntradayMode ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              {intradayBoard || (
+                <div style={{ color: '#999', textAlign: 'center', marginTop: rpSpace.large }}>暂无分时看板数据</div>
+              )}
             </div>
+          ) : (
+            <Fragment>
+              <div style={{ paddingTop: '0px', flexShrink: 0 }}>
+                <div
+                  style={{
+                    fontSize: rpFont.heading,
+                    fontWeight: 'bold',
+                    color: '#ffffff',
+                    marginBottom: rpSpace.large,
+                    textAlign: 'left',
+                  }}
+                >
+                  {displayData?.time || '--'}
+                </div>
 
-            {/* K线数据网格 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: rpGap.double }}>
-              {[
-                { label: '开盘价', value: displayData?.open, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
-                { label: '收盘价', value: displayData?.close, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
-                { label: '最高', value: displayData?.high, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
-                { label: '最低', value: displayData?.low, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
-              ].map((item) => (
-                <div key={item.label}>
-                  <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>{item.label}</div>
-                  <div
-                    style={{
-                      fontSize: rpFont.value,
-                      fontWeight: '500',
-                      color: item.value !== undefined && item.value !== null && item.compare
-                        ? item.value > item.compare
-                          ? item.positiveColor
-                          : item.value < item.compare
-                          ? item.negativeColor
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: rpGap.double }}>
+                  {[
+                    { label: '开盘价', value: displayData?.open, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
+                    { label: '收盘价', value: displayData?.close, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
+                    { label: '最高', value: displayData?.high, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
+                    { label: '最低', value: displayData?.low, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
+                  ].map((item) => (
+                    <div key={item.label}>
+                      <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>{item.label}</div>
+                      <div
+                        style={{
+                          fontSize: rpFont.value,
+                          fontWeight: '500',
+                          color: item.value !== undefined && item.value !== null && item.compare
+                            ? item.value > item.compare
+                              ? item.positiveColor
+                              : item.value < item.compare
+                              ? item.negativeColor
+                              : '#ffffff'
+                            : '#ffffff',
+                        }}
+                      >
+                        {item.value !== undefined && item.value !== null ? item.value.toFixed(2) : '--'}
+                      </div>
+                    </div>
+                  ))}
+
+                  <div>
+                    <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>涨幅(%)</div>
+                    <div
+                      style={{
+                        fontSize: rpFont.value,
+                        fontWeight: '500',
+                        color: displayData
+                          ? displayData.changePercent > 0
+                            ? '#ef232a'
+                            : displayData.changePercent < 0
+                            ? '#14b143'
+                            : '#666'
+                          : '#666',
+                      }}
+                    >
+                      {displayData ? (
+                        <Fragment>
+                          {displayData.changePercent > 0 ? '+' : ''}
+                          {displayData.changePercent.toFixed(2)}%
+                        </Fragment>
+                      ) : (
+                        '--'
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>涨幅(¥)</div>
+                    <div
+                      style={{
+                        fontSize: rpFont.value,
+                        fontWeight: '500',
+                        color: displayData
+                          ? displayData.changeAmount > 0
+                            ? '#ef232a'
+                            : displayData.changeAmount < 0
+                            ? '#14b143'
+                            : '#666'
+                          : '#666',
+                      }}
+                    >
+                      {displayData ? (
+                        <Fragment>
+                          {displayData.changeAmount > 0 ? '+' : ''}
+                          {displayData.changeAmount.toFixed(2)}
+                        </Fragment>
+                      ) : (
+                        '--'
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  paddingTop: rpSpace.large,
+                  marginTop: rpSpace.block,
+                  flexShrink: 0,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: rpFont.sectionTitle,
+                    fontWeight: '600',
+                    color: '#ffffff',
+                    marginBottom: rpSpace.medium,
+                  }}
+                >
+                  成交量
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: rpGap.single }}>
+                  {[
+                    {
+                      label: '成交量',
+                      value: displayData ? `${(displayData.volume / 10000).toFixed(2)} 万手` : '--',
+                      color: displayData
+                        ? displayData.close > displayData.open
+                          ? '#ef232a'
+                          : displayData.close < displayData.open
+                          ? '#14b143'
                           : '#ffffff'
                         : '#ffffff',
-                    }}
-                  >
-                    {item.value !== undefined && item.value !== null ? item.value.toFixed(2) : '--'}
-                  </div>
-                </div>
-              ))}
-
-              {/* 涨幅(%) */}
-              <div>
-                <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>涨幅(%)</div>
-                <div
-                  style={{
-                    fontSize: rpFont.value,
-                    fontWeight: '500',
-                    color: displayData
-                      ? displayData.changePercent > 0
-                        ? '#ef232a'
-                        : displayData.changePercent < 0
-                        ? '#14b143'
-                        : '#666'
-                      : '#666',
-                  }}
-                >
-                  {displayData ? (
-                    <>
-                      {displayData.changePercent > 0 ? '+' : ''}
-                      {displayData.changePercent.toFixed(2)}%
-                    </>
-                  ) : (
-                    '--'
+                    },
+                    {
+                      label: '成交额',
+                      value: displayData ? `${(displayData.volume * displayData.close / 100000000).toFixed(2)} 亿元` : '--',
+                      color: displayData
+                        ? displayData.close > displayData.open
+                          ? '#ef232a'
+                          : displayData.close < displayData.open
+                          ? '#14b143'
+                          : '#ffffff'
+                        : '#ffffff',
+                    },
+                  ].map((item) => (
+                    <div key={item.label}>
+                      <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>{item.label}</div>
+                      <div style={{ fontSize: rpFont.value, fontWeight: '500', color: item.color }}>
+                        {item.value}
+                      </div>
+                    </div>
+                  ))}
+                  {displayData?.turn !== null && displayData?.turn !== undefined && (
+                    <div>
+                      <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>换手率</div>
+                      <div style={{ fontSize: rpFont.value, fontWeight: '500', color: '#ffffff' }}>
+                        {displayData.turn.toFixed(2)}%
+                      </div>
+                    </div>
+                  )}
+                  {displayData?.tradeStatus !== null && displayData?.tradeStatus !== undefined && (
+                    <div>
+                      <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>交易状态</div>
+                      <div
+                        style={{
+                          fontSize: rpFont.value,
+                          fontWeight: '500',
+                          color: displayData.tradeStatus === 1 ? '#4CAF50' : '#FF9800',
+                        }}
+                      >
+                        {displayData.tradeStatus === 1 ? '正常交易' : '停牌'}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
-              {/* 涨幅(¥) */}
-              <div>
-                <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>涨幅(¥)</div>
-                <div
-                  style={{
-                    fontSize: rpFont.value,
-                    fontWeight: '500',
-                    color: displayData
-                      ? displayData.changeAmount > 0
-                        ? '#ef232a'
-                        : displayData.changeAmount < 0
-                        ? '#14b143'
-                        : '#666'
-                      : '#666',
-                  }}
-                >
-                  {displayData ? (
-                    <>
-                      {displayData.changeAmount > 0 ? '+' : ''}
-                      {displayData.changeAmount.toFixed(2)}
-                    </>
-                  ) : (
-                    '--'
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 第二块：成交量数据 */}
-          <div
-            style={{
-              paddingTop: rpSpace.large,
-              marginTop: rpSpace.block,
-              flexShrink: 0,
-            }}
-          >
-            <div
-              style={{
-                fontSize: rpFont.sectionTitle,
-                fontWeight: '600',
-                color: '#ffffff',
-                marginBottom: rpSpace.medium,
-              }}
-            >
-              成交量
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: rpGap.single }}>
-              {[
-                {
-                  label: '成交量',
-                  value: displayData ? `${(displayData.volume / 10000).toFixed(2)} 万手` : '--',
-                  color: displayData
-                    ? displayData.close > displayData.open
-                      ? '#ef232a'
-                      : displayData.close < displayData.open
-                      ? '#14b143'
-                      : '#ffffff'
-                    : '#ffffff',
-                },
-                {
-                  label: '成交额',
-                  value: displayData ? `${(displayData.volume * displayData.close / 100000000).toFixed(2)} 亿元` : '--',
-                  color: displayData
-                    ? displayData.close > displayData.open
-                      ? '#ef232a'
-                      : displayData.close < displayData.open
-                      ? '#14b143'
-                      : '#ffffff'
-                    : '#ffffff',
-                },
-              ].map((item) => (
-                <div key={item.label}>
-                  <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>{item.label}</div>
-                  <div style={{ fontSize: rpFont.value, fontWeight: '500', color: item.color }}>
-                    {item.value}
-                  </div>
-                </div>
-              ))}
-              {displayData?.turn !== null && displayData?.turn !== undefined && (
-                <div>
-                  <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>换手率</div>
-                  <div style={{ fontSize: rpFont.value, fontWeight: '500', color: '#ffffff' }}>
-                    {displayData.turn.toFixed(2)}%
-                  </div>
-                </div>
-              )}
-              {displayData?.tradeStatus !== null && displayData?.tradeStatus !== undefined && (
-                <div>
-                  <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>交易状态</div>
-                  <div
-                    style={{
-                      fontSize: rpFont.value,
-                      fontWeight: '500',
-                      color: displayData.tradeStatus === 1 ? '#4CAF50' : '#FF9800',
-                    }}
-                  >
-                    {displayData.tradeStatus === 1 ? '正常交易' : '停牌'}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* 第二块半：估值指标 */}
           {(displayData?.peTtm !== null || displayData?.pbMrq !== null || displayData?.psTtm !== null || displayData?.pcfNcfTtm !== null) && (
             <div
@@ -3292,11 +3352,11 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                 const dVal = kdjData.d[dataIndex]?.value
                 const jVal = kdjData.j[dataIndex]?.value
                 return renderGrid(
-                  <>
+                  <Fragment>
                     <div><span style={{ color: '#2196F3' }}>K: {kVal ? kVal.toFixed(2) : '--'}</span></div>
                     <div><span style={{ color: '#FF9800' }}>D: {dVal ? dVal.toFixed(2) : '--'}</span></div>
                     <div><span style={{ color: '#9C27B0' }}>J: {jVal ? jVal.toFixed(2) : '--'}</span></div>
-                  </>,
+                  </Fragment>
                 )
               } else if (lowerIndicator === 'MACD') {
                 const macdData = calculateMACD(data, 12, 26, 9)
@@ -3304,11 +3364,11 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                 const deaVal = macdData.dea[dataIndex]?.value
                 const macdVal = macdData.macd[dataIndex]?.value
                 return renderGrid(
-                  <>
+                  <Fragment>
                     <div><span style={{ color: '#2196F3' }}>DIF: {difVal !== null && difVal !== undefined ? difVal.toFixed(4) : '--'}</span></div>
                     <div><span style={{ color: '#FF9800' }}>DEA: {deaVal !== null && deaVal !== undefined ? deaVal.toFixed(4) : '--'}</span></div>
                     <div><span style={{ color: macdVal !== null && macdVal !== undefined && macdVal > 0 ? '#ef232a' : '#14b143' }}>MACD: {macdVal !== null && macdVal !== undefined ? macdVal.toFixed(4) : '--'}</span></div>
-                  </>,
+                  </Fragment>
                 )
               } else if (lowerIndicator === 'RSI') {
                 const rsiData = calculateRSI(data, 14)
@@ -3332,11 +3392,11 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                 const mdiVal = dmiData.mdi[dataIndex]?.value
                 const adxVal = dmiData.adx[dataIndex]?.value
                 return renderGrid(
-                  <>
+                  <Fragment>
                     <div><span style={{ color: '#2196F3' }}>PDI: {pdiVal ? pdiVal.toFixed(2) : '--'}</span></div>
                     <div><span style={{ color: '#FF9800' }}>MDI: {mdiVal ? mdiVal.toFixed(2) : '--'}</span></div>
                     <div><span style={{ color: '#9C27B0' }}>ADX: {adxVal ? adxVal.toFixed(2) : '--'}</span></div>
-                  </>,
+                  </Fragment>
                 )
               } else if (lowerIndicator === 'CCI') {
                 const cciData = calculateCCI(data, 14)
@@ -3362,6 +3422,8 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
               </div>
             )}
           </div>
+        </Fragment>
+          )}
         </div>
       </div>
     </div>

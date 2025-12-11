@@ -1,14 +1,33 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { Tabs, Empty } from 'antd'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { Tabs, Empty, message } from 'antd'
+import { useLocation, useNavigate } from 'react-router-dom'
 import StockSelector from '../components/StockSelector'
 import StockChart from '../components/StockChart'
 import MarketOverview from '../components/MarketOverview'
 import { stockDailyAPI, stockCompanyAPI } from '../services/api'
 import { useKnowledgeBase } from '../contexts/KnowledgeBaseContext'
 import { useStockTicksStream } from '../hooks/useStockTicksStream'
+import useTradingSession from '../hooks/useTradingSession'
+import { formatLargeNumber } from '../utils/format'
 import './Quotes.css'
 
+const TICK_STATUS_TEXT = {
+  trading: '交易中',
+  rest: '休息时段',
+  non_trading: '非交易时段',
+}
+
+const MAIN_MODULES = [
+  { key: 'overview', label: '市场总览' },
+  { key: 'stock', label: '个股' },
+  { key: 'sector', label: '板块' },
+  { key: 'capital', label: '资金' },
+  { key: 'sentiment', label: '市场情绪' },
+]
+
 function Quotes() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const { openKnowledge } = useKnowledgeBase()
   const [mainModule, setMainModule] = useState('stock') // 主模块: overview, stock, sector, capital, sentiment
   const [activeKey, setActiveKey] = useState('trading')
@@ -20,6 +39,10 @@ function Quotes() {
   const [adjustFlag, setAdjustFlag] = useState(2) // 复权类型: 1-后复权, 2-前复权, 3-不复权 (默认前复权)
   const [chartHeight, setChartHeight] = useState(520)
   const [chartHeaderHeight, setChartHeaderHeight] = useState(0)
+  const [intradayTicks, setIntradayTicks] = useState([])
+  const [tickStreamStatus, setTickStreamStatus] = useState('non_trading')
+  const [tickConnectionState, setTickConnectionState] = useState('idle')
+  const [tickStreamEnabled, setTickStreamEnabled] = useState(false)
   const allDataRef = useRef([])
   const loadingStartTimeRef = useRef(null)
   // 缓存三种复权类型的数据: { 1: [], 2: [], 3: [] }
@@ -30,13 +53,65 @@ function Quotes() {
   const tradingTabsRef = useRef(null)
   const tabContentRef = useRef(null)
   const chartSectionRef = useRef(null)
+  const tradingSession = useTradingSession()
+  const effectiveTradeDate = tradingSession.effectiveTradingDate
   const isTradingTabActive = mainModule === 'stock' && activeKey === 'trading'
-  const shouldStreamTicks = isTradingTabActive && period === 'minute' && Boolean(selectedStock?.stockCode)
+  const shouldStreamTicks = tickStreamEnabled &&
+    Boolean(selectedStock?.stockCode) &&
+    Boolean(effectiveTradeDate)
+  const tickStatusLabel = TICK_STATUS_TEXT[tickStreamStatus] || '未知状态'
 
-  useStockTicksStream({
+  const syncQueryWithModule = useCallback((moduleKey) => {
+    if (location.pathname !== '/quotes') return
+    const params = new URLSearchParams(location.search)
+    if (params.get('module') === moduleKey) return
+    params.set('module', moduleKey)
+    navigate({ pathname: location.pathname, search: params.toString() }, { replace: true })
+  }, [location.pathname, location.search, navigate])
+
+  const handleModuleChange = useCallback((moduleKey) => {
+    setMainModule(moduleKey)
+    syncQueryWithModule(moduleKey)
+  }, [syncQueryWithModule])
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const moduleKey = params.get('module')
+    if (moduleKey && MAIN_MODULES.some(item => item.key === moduleKey) && moduleKey !== mainModule) {
+      setMainModule(moduleKey)
+    }
+  }, [location.search, mainModule])
+
+  const { ticks: streamTicks, status: streamStatus, connectionState: streamConnectionState, historyTicks: streamHistory } = useStockTicksStream({
     stockCode: selectedStock?.stockCode,
     enabled: shouldStreamTicks,
+    tradeDate: effectiveTradeDate,
   })
+  const latestTick = useMemo(
+    () => (intradayTicks.length ? intradayTicks[intradayTicks.length - 1] : null),
+    [intradayTicks]
+  )
+
+  useEffect(() => {
+    if (!shouldStreamTicks) {
+      if (!tickStreamEnabled || !selectedStock?.stockCode) {
+        setIntradayTicks([])
+        setTickStreamStatus('non_trading')
+        setTickConnectionState('idle')
+      }
+      return
+    }
+    const normalizedStatus = streamStatus === 'rest' ? 'non_trading' : streamStatus || 'non_trading'
+    const mergedTicks = (Array.isArray(streamTicks) && streamTicks.length > 0)
+      ? streamTicks
+      : (Array.isArray(streamHistory) ? streamHistory : [])
+
+    setIntradayTicks(mergedTicks)
+    setTickStreamStatus(normalizedStatus)
+    if (streamConnectionState) {
+      setTickConnectionState(streamConnectionState)
+    }
+  }, [shouldStreamTicks, streamTicks, streamStatus, streamConnectionState, tickStreamEnabled, selectedStock?.stockCode, streamHistory])
 
   const handleChartHeaderHeight = useCallback((height) => {
     setChartHeaderHeight(prev => {
@@ -72,15 +147,6 @@ function Quotes() {
       ? Math.max(MIN_CHART_HEIGHT, tabAvailable)
       : viewportAvailable
     const constrainedHeight = Math.max(MIN_CHART_HEIGHT, Math.min(maxChartHeight, viewportAvailable))
-    console.log(
-      '📐 Tab content height:',
-      Math.round(displayAreaHeight),
-      'px; chart offset:',
-      Math.round(chartOffsetWithinTab),
-      'px; chart rendering height:',
-      Math.round(constrainedHeight),
-      'px'
-    )
     setChartHeight(constrainedHeight)
   }, [chartHeaderHeight])
 
@@ -100,15 +166,6 @@ function Quotes() {
       handleChartHeaderHeight(0)
     }
   }, [chartData.length, handleChartHeaderHeight])
-
-  // 五大模块
-  const mainModules = [
-    { key: 'overview', label: '市场总览' },
-    { key: 'stock', label: '个股' },
-    { key: 'sector', label: '板块' },
-    { key: 'capital', label: '资金' },
-    { key: 'sentiment', label: '市场情绪' },
-  ]
 
   // 个股模块的六个tab
   const tabItems = [
@@ -220,81 +277,77 @@ function Quotes() {
   }
 
   // 查询指定复权类型的所有历史日线数据（5年5年查询直到所有数据加载完）
-  const fetchStockDailyByAdjustFlag = async (stockCode, targetAdjustFlag) => {
-    if (!stockCode) return []
+  const normalizeDateInput = (value) => {
+    if (!value) return ''
+    const str = String(value).trim()
+    if (!str) return ''
+    if (str.includes('-')) return str.split('T')[0]
+    if (str.length === 8) {
+      return `${str.slice(0, 4)}-${str.slice(4, 6)}-${str.slice(6, 8)}`
+    }
+    return str
+  }
 
-    let allData = []
+  const resolveListingDate = (stock) => {
+    if (!stock) return ''
+    return normalizeDateInput(
+      stock.listingDate ||
+      stock.listDate ||
+      stock.list_date ||
+      stock.listing_date
+    )
+  }
+
+  const fetchStockDailyByAdjustFlag = async (stockCode, targetAdjustFlag, listingDate) => {
+    if (!stockCode) return []
 
     try {
       const today = new Date()
       const endDate = today.toISOString().split('T')[0]
+      const normalizedListingDate = normalizeDateInput(listingDate) || '1990-01-01'
 
-      // 从1990年开始查询（假设最早的股票数据）
-      let currentEndDate = endDate
-      let currentStartYear = today.getFullYear() - 5
-      let hasMoreData = true
+      const response = await stockDailyAPI.queryStockDaily({
+        stockCode,
+        startDate: normalizedListingDate,
+        endDate,
+        sortOrder: 'asc',
+        adjustFlag: targetAdjustFlag,
+      })
 
-      while (hasMoreData && currentStartYear >= 1990) {
-        const currentStartDate = `${currentStartYear}-01-01`
-
-        const response = await stockDailyAPI.queryStockDaily({
-          stockCode: stockCode,
-          startDate: currentStartDate,
-          endDate: currentEndDate,
-          sortOrder: 'asc',
-          adjustFlag: targetAdjustFlag, // 复权类型
+      if (response.code === 200 && Array.isArray(response.data)) {
+        return response.data.map(item => {
+          const dateOnly = item.tradeDate.split(' ')[0]
+          return {
+            time: dateOnly,
+            open: parseFloat(item.openPrice),
+            high: parseFloat(item.highPrice),
+            low: parseFloat(item.lowPrice),
+            close: parseFloat(item.closePrice),
+            volume: parseFloat(item.volume),
+            preClose: item.preClose ? parseFloat(item.preClose) : null,
+            changeAmount: item.changeAmount ? parseFloat(item.changeAmount) : null,
+            pctChange: item.pctChange ? parseFloat(item.pctChange) : null,
+            turn: item.turn ? parseFloat(item.turn) : null,
+            tradeStatus: item.tradeStatus,
+            peTtm: item.peTtm ? parseFloat(item.peTtm) : null,
+            pbMrq: item.pbMrq ? parseFloat(item.pbMrq) : null,
+            psTtm: item.psTtm ? parseFloat(item.psTtm) : null,
+            pcfNcfTtm: item.pcfNcfTtm ? parseFloat(item.pcfNcfTtm) : null,
+            isSt: item.isSt,
+          }
         })
-
-        if (response.code === 200 && response.data && response.data.length > 0) {
-          const newData = response.data.map(item => {
-            const dateOnly = item.tradeDate.split(' ')[0]
-            return {
-              time: dateOnly,
-              open: parseFloat(item.openPrice),
-              high: parseFloat(item.highPrice),
-              low: parseFloat(item.lowPrice),
-              close: parseFloat(item.closePrice),
-              volume: parseFloat(item.volume),
-              // 新增字段
-              preClose: item.preClose ? parseFloat(item.preClose) : null,
-              changeAmount: item.changeAmount ? parseFloat(item.changeAmount) : null,
-              pctChange: item.pctChange ? parseFloat(item.pctChange) : null,
-              turn: item.turn ? parseFloat(item.turn) : null,
-              tradeStatus: item.tradeStatus,
-              peTtm: item.peTtm ? parseFloat(item.peTtm) : null,
-              pbMrq: item.pbMrq ? parseFloat(item.pbMrq) : null,
-              psTtm: item.psTtm ? parseFloat(item.psTtm) : null,
-              pcfNcfTtm: item.pcfNcfTtm ? parseFloat(item.pcfNcfTtm) : null,
-              isSt: item.isSt,
-            }
-          })
-
-          // 将新数据插入到前面
-          allData = [...newData, ...allData]
-
-          // 准备下一次查询
-          currentEndDate = new Date(newData[0].time)
-          currentEndDate.setDate(currentEndDate.getDate() - 1)
-          currentEndDate = currentEndDate.toISOString().split('T')[0]
-          currentStartYear -= 5
-        } else {
-          // 没有更多数据了
-          hasMoreData = false
-        }
       }
 
-      return allData
+      return []
     } catch (error) {
-      console.error(`查询复权类型${targetAdjustFlag}的日线数据失败:`, error)
       return []
     }
   }
 
   // 预加载所有三种复权类型的数据
-  const fetchAllAdjustTypes = async (stockCode) => {
+  const fetchAllAdjustTypes = async (stockCode, listingDate) => {
     if (!stockCode) return
 
-    console.log('🔄 开始预加载所有复权类型的数据:', stockCode)
     setLoading(true)
     loadingStartTimeRef.current = Date.now()
 
@@ -305,16 +358,10 @@ function Quotes() {
     try {
       // 并行加载三种复权类型的数据
       const [data1, data2, data3] = await Promise.all([
-        fetchStockDailyByAdjustFlag(stockCode, 1), // 后复权
-        fetchStockDailyByAdjustFlag(stockCode, 2), // 前复权
-        fetchStockDailyByAdjustFlag(stockCode, 3), // 不复权
+        fetchStockDailyByAdjustFlag(stockCode, 1, listingDate), // 后复权
+        fetchStockDailyByAdjustFlag(stockCode, 2, listingDate), // 前复权
+        fetchStockDailyByAdjustFlag(stockCode, 3, listingDate), // 不复权
       ])
-
-      console.log('✅ 所有复权数据加载完成', {
-        后复权: data1.length,
-        前复权: data2.length,
-        不复权: data3.length
-      })
 
       // 缓存所有数据
       dataCacheRef.current = {
@@ -327,17 +374,14 @@ function Quotes() {
       const currentData = dataCacheRef.current[adjustFlag] || []
       allDataRef.current = currentData
 
-      console.log('📊 设置图表数据，当前复权类型:', adjustFlag, '数据条数:', currentData.length)
-
       // 根据当前周期聚合数据并显示
       const aggregated = aggregateData(currentData, period)
-      console.log('📊 聚合后数据条数:', aggregated.length)
 
       // 无论有没有数据都更新图表（没数据时显示空图表）
       setChartData(aggregated)
       // 注意：不在这里设置 setLoading(false)，等待图表渲染完成的回调
     } catch (error) {
-      console.error('❌ 查询日线数据失败:', error)
+      message.error('查询日线数据失败，请稍后重试')
       // 加载失败时也要显示空图表
       allDataRef.current = []
       setChartData([])
@@ -353,14 +397,11 @@ function Quotes() {
 
   // 处理图表渲染完成
   const handleChartReady = () => {
-    console.log('🎯 父组件收到图表渲染完成通知')
-
     // 确保加载动画至少显示2.5秒
     const elapsedTime = Date.now() - loadingStartTimeRef.current
     const remainingTime = Math.max(0, 2500 - elapsedTime)
 
     setTimeout(() => {
-      console.log('✅ 加载动画结束，显示图表')
       setLoading(false)
     }, remainingTime)
   }
@@ -371,10 +412,10 @@ function Quotes() {
     setPeriod(newPeriod)
 
     if (newPeriod === 'minute') {
+      setLoading(false)
       if (!selectedStock?.stockCode) {
-        console.warn('🔌 请选择股票后再查看分时数据')
+        message.warning('请选择股票后再查看分时数据')
       }
-      console.log('🕒 切换到分时视图，等待 WebSocket tick 数据')
       setChartData([])
       return
     }
@@ -399,7 +440,7 @@ function Quotes() {
     } else {
       // 如果缓存中没有数据，重新加载
       if (selectedStock) {
-        fetchAllAdjustTypes(selectedStock.stockCode)
+        fetchAllAdjustTypes(selectedStock.stockCode, resolveListingDate(selectedStock))
       }
     }
   }
@@ -408,16 +449,14 @@ function Quotes() {
   const fetchCompanyDetail = async (stockCode) => {
     try {
       const response = await stockCompanyAPI.getCompanyDetail(stockCode)
-      console.log('公司详情响应:', response)
       if (response.code === 200) {
         setCompanyDetail(response.data)
-        console.log('公司详情数据:', response.data)
       } else {
-        console.error('获取公司详情失败:', response.message)
+        message.error('获取公司详情失败，请稍后重试')
         setCompanyDetail(null)
       }
     } catch (error) {
-      console.error('获取公司详情失败:', error)
+      message.error('获取公司详情失败，请稍后重试')
       setCompanyDetail(null)
     }
   }
@@ -435,12 +474,16 @@ function Quotes() {
         allDataRef.current = []
         setChartData([])
         dataCacheRef.current = {} // 清空缓存
-        setPeriod('daily') // 重置为日线
+        setPeriod((prev) => (prev === 'minute' ? 'minute' : 'daily')) // 保留分时展示
         setAdjustFlag(2) // 重置为前复权
+        setTickStreamEnabled(false)
+        setIntradayTicks([])
+        setTickStreamStatus('non_trading')
+        setTickConnectionState('idle')
 
         // 稍微延迟一下再加载数据，确保加载动画能显示
         setTimeout(() => {
-          fetchAllAdjustTypes(selectedStock.stockCode) // 预加载所有复权类型的数据
+          fetchAllAdjustTypes(selectedStock.stockCode, resolveListingDate(selectedStock)) // 预加载所有复权类型的数据
           fetchCompanyDetail(selectedStock.stockCode) // 获取公司详情
         }, 50)
       }
@@ -450,24 +493,42 @@ function Quotes() {
       allDataRef.current = []
       setChartData([])
       dataCacheRef.current = {}
+      setTickStreamEnabled(false)
+      setIntradayTicks([])
+      setTickStreamStatus('non_trading')
+      setTickConnectionState('idle')
     }
   }, [selectedStock])
 
+  useEffect(() => {
+    if (period === 'minute' && selectedStock?.stockCode && effectiveTradeDate) {
+      setTickStreamEnabled(true)
+    }
+  }, [period, selectedStock?.stockCode, effectiveTradeDate])
+
+  const intradayBoardItems = useMemo(() => ([
+    {
+      key: 'depth',
+      label: '五档',
+      children: <FiveLevelBoard tick={latestTick} />,
+    },
+    {
+      key: 'deals',
+      label: '成交',
+      children: <BoardPlaceholder message="成交明细模块建设中" />,
+    },
+  ]), [latestTick])
+
+  const intradayBoard = useMemo(() => (
+    <Tabs
+      className="intraday-board-tabs"
+      defaultActiveKey="depth"
+      items={intradayBoardItems}
+    />
+  ), [intradayBoardItems])
+
   return (
     <div className="quotes-container" ref={containerRef}>
-      {/* 顶部五大模块切换 */}
-      <div className="main-modules" ref={mainModulesRef}>
-        {mainModules.map(module => (
-          <div
-            key={module.key}
-            className={`module-tab ${mainModule === module.key ? 'active' : ''}`}
-            onClick={() => setMainModule(module.key)}
-          >
-            {module.label}
-          </div>
-        ))}
-      </div>
-
       {/* 模块内容区域 */}
       <div className="module-content">
         {mainModule === 'stock' ? (
@@ -520,7 +581,7 @@ function Quotes() {
                                   right: 0,
                                   bottom: 0,
                                   backgroundColor: 'rgb(28, 28, 28)',
-                                  display: loading ? 'flex' : 'none',
+                                  display: loading && period !== 'minute' ? 'flex' : 'none',
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   zIndex: 100,
@@ -532,12 +593,12 @@ function Quotes() {
                                   className="trading-chart-content"
                                   style={{
                                     height: chartHeight,
-                                    visibility: loading ? 'hidden' : 'visible',
-                                    opacity: loading ? 0 : 1,
+                                    visibility: loading && period !== 'minute' ? 'hidden' : 'visible',
+                                    opacity: loading && period !== 'minute' ? 0 : 1,
                                     transition: 'opacity 0.4s ease-in',
                                   }}
                                 >
-                                  {chartData.length > 0 && (
+                                  {(period === 'minute' || chartData.length > 0) && (
                                     <StockChart
                                       data={chartData}
                                       title={`${selectedStock.stockName} ${selectedStock.stockCode}`}
@@ -546,12 +607,17 @@ function Quotes() {
                                       period={period}
                                       onPeriodChange={handlePeriodChange}
                                       adjustFlag={adjustFlag}
-                                    onAdjustFlagChange={handleAdjustFlagChange}
-                                    onChartReady={handleChartReady}
-                                    onOpenKnowledge={openKnowledge}
-                                    height={chartHeight}
-                                    onHeaderHeightChange={handleChartHeaderHeight}
-                                  />
+                                      onAdjustFlagChange={handleAdjustFlagChange}
+                                      onChartReady={handleChartReady}
+                                      onOpenKnowledge={openKnowledge}
+                                      height={chartHeight}
+                                      onHeaderHeightChange={handleChartHeaderHeight}
+                                      intradayTicks={intradayTicks}
+                                      intradayStatus={tickStreamStatus}
+                                      intradayStatusLabel={tickStatusLabel}
+                                      intradayBoard={intradayBoard}
+                                      intradayConnectionState={tickConnectionState}
+                                    />
                                   )}
                                 </div>
                               </div>
@@ -574,22 +640,18 @@ function Quotes() {
             </div>
           </div>
         ) : mainModule === 'overview' ? (
-          // 市场总览模块
           <div className="overview-module">
             <MarketOverview />
           </div>
         ) : mainModule === 'sector' ? (
-          // 板块模块
           <div className="sector-module">
             <div className="module-placeholder">板块</div>
           </div>
         ) : mainModule === 'capital' ? (
-          // 资金模块
           <div className="capital-module">
             <div className="module-placeholder">资金</div>
           </div>
         ) : mainModule === 'sentiment' ? (
-          // 市场情绪模块
           <div className="sentiment-module">
             <div className="module-placeholder">市场情绪</div>
           </div>
@@ -600,3 +662,62 @@ function Quotes() {
 }
 
 export default Quotes
+
+const SELL_LEVELS = [5, 4, 3, 2, 1]
+const BUY_LEVELS = [1, 2, 3, 4, 5]
+
+const formatPriceValue = (value) => {
+  if (value === null || value === undefined) return '--'
+  const num = Number(value)
+  return Number.isNaN(num) ? '--' : num.toFixed(2)
+}
+
+const formatVolumeValue = (value) => {
+  if (value === null || value === undefined) return '--'
+  const num = Number(value)
+  if (Number.isNaN(num)) return '--'
+  return formatLargeNumber(num)
+}
+
+function BoardPlaceholder({ message }) {
+  return (
+    <div className="board-placeholder">
+      {message}
+    </div>
+  )
+}
+
+function FiveLevelBoard({ tick }) {
+  if (!tick) {
+    return <Empty description="暂无五档数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+  }
+
+  return (
+    <div className="five-level-board">
+      <div className="orderbook-side">
+        <div className="side-title">卖盘</div>
+        <div className="orderbook-rows">
+          {SELL_LEVELS.map(level => (
+            <div className="orderbook-row" key={`ask-${level}`}>
+              <span className="level-label">卖{level}</span>
+              <span className="price ask">{formatPriceValue(tick[`a${level}_p`])}</span>
+              <span className="volume">{formatVolumeValue(tick[`a${level}_v`])}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="orderbook-side">
+        <div className="side-title">买盘</div>
+        <div className="orderbook-rows">
+          {BUY_LEVELS.map(level => (
+            <div className="orderbook-row" key={`bid-${level}`}>
+              <span className="level-label">买{level}</span>
+              <span className="price bid">{formatPriceValue(tick[`b${level}_p`])}</span>
+              <span className="volume">{formatVolumeValue(tick[`b${level}_v`])}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}

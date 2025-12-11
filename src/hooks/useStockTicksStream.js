@@ -1,8 +1,139 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { getEffectiveTradingDate } from '../utils/tradingSession'
 
 const DEFAULT_RECONNECT_DELAY = 3000
 const DEFAULT_PORT = ''
 const DEFAULT_PATH = '/ws/ticks'
+const SESSION_SEGMENTS = [
+  { start: '09:15:00', end: '09:25:00' },
+  { start: '09:30:00', end: '11:30:00' },
+  { start: '13:00:00', end: '14:57:00' },
+  { start: '14:57:00', end: '15:00:00' },
+]
+const sessionCache = new Map()
+const INITIAL_STREAM_STATE = {
+  status: 'non_trading',
+  historyTicks: [],
+  latestTicks: [],
+  ticks: [],
+  tradeDate: null,
+  connectionState: 'idle',
+  hasData: false,
+}
+
+const buildTickKey = (tick) => {
+  if (!tick) return ''
+  const date = tick.date || tick.trade_date || tick.trading_date || ''
+  const time = tick.time || tick.trade_time || ''
+  const code = tick.ts_code || tick.symbol || ''
+  return `${date}-${time}-${code}`
+}
+
+const sortTicks = (ticks) => {
+  return ticks.slice().sort((a, b) => {
+    const left = `${a.date || ''} ${a.time || ''}`
+    const right = `${b.date || ''} ${b.time || ''}`
+    if (left === right) return 0
+    return left > right ? 1 : -1
+  })
+}
+
+const normalizeTicks = (ticks) => {
+  if (!Array.isArray(ticks) || ticks.length === 0) {
+    return []
+  }
+  const map = new Map()
+  ticks.forEach((tick) => {
+    const key = buildTickKey(tick)
+    if (key) {
+      map.set(key, tick)
+    }
+  })
+  return sortTicks(Array.from(map.values()))
+}
+
+const normalizeDateString = (value) => {
+  if (!value || typeof value !== 'string') return ''
+  if (value.includes('-')) return value
+  if (value.length === 8) {
+    return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`
+  }
+  return value
+}
+
+const parseDateTime = (dateStr, timeStr) => {
+  if (!dateStr || !timeStr) return null
+  const isoDate = normalizeDateString(dateStr)
+  if (!isoDate) return null
+  let normalizedTime = timeStr.trim()
+  if (!normalizedTime.includes(':')) {
+    if (normalizedTime.length < 6) return null
+    normalizedTime = `${normalizedTime.slice(0, 2)}:${normalizedTime.slice(2, 4)}:${normalizedTime.slice(4, 6)}`
+  }
+  const composed = `${isoDate}T${normalizedTime}+08:00`
+  const parsed = Date.parse(composed)
+  if (Number.isNaN(parsed)) return null
+  return parsed
+}
+
+const getSessionBoundaries = (dateStr) => {
+  const isoDate = normalizeDateString(dateStr)
+  if (!isoDate) return []
+  if (sessionCache.has(isoDate)) {
+    return sessionCache.get(isoDate)
+  }
+  const boundaries = SESSION_SEGMENTS.map(({ start, end }) => {
+    const startTs = Date.parse(`${isoDate}T${start}+08:00`)
+    const endTs = Date.parse(`${isoDate}T${end}+08:00`)
+    if (Number.isNaN(startTs) || Number.isNaN(endTs)) return null
+    return { start: startTs, end: endTs }
+  }).filter(Boolean)
+  sessionCache.set(isoDate, boundaries)
+  return boundaries
+}
+
+const INVALID_TICK_REASONS = {
+  missing_datetime: '缺少日期或时间',
+  invalid_datetime: '时间格式异常',
+  out_of_session: '超出交易时间范围',
+}
+
+const isWithinSessions = (timestamp, dateStr) => {
+  if (!timestamp || !dateStr) return true
+  const boundaries = getSessionBoundaries(dateStr)
+  if (!boundaries.length) return true
+  return boundaries.some(({ start, end }) => timestamp >= start && timestamp <= end)
+}
+
+const filterValidTicks = (ticks, options = {}) => {
+  if (!Array.isArray(ticks) || ticks.length === 0) {
+    return []
+  }
+  const { onInvalid } = options
+  const valid = []
+  ticks.forEach((tick) => {
+    const datePart = tick?.date || tick?.trade_date || tick?.trading_date || ''
+    const timePart = tick?.time || tick?.trade_time || ''
+    if (!datePart || !timePart || typeof datePart !== 'string' || typeof timePart !== 'string') {
+      onInvalid?.(tick, INVALID_TICK_REASONS.missing_datetime)
+      return
+    }
+    const timestamp = parseDateTime(datePart, timePart)
+    if (timestamp === null) {
+      onInvalid?.(tick, INVALID_TICK_REASONS.invalid_datetime)
+      return
+    }
+    if (!isWithinSessions(timestamp, datePart)) {
+      onInvalid?.(tick, INVALID_TICK_REASONS.out_of_session)
+      return
+    }
+    valid.push({ ...tick, __timestamp: timestamp })
+  })
+  if (!valid.length && ticks.length) {
+    return ticks
+  }
+  return valid
+}
 
 const resolveEnv = () => {
   if (typeof window === 'undefined') {
@@ -24,7 +155,6 @@ const resolveEnv = () => {
   const path = env.VITE_QUANT_GATEWAY_WS_PATH || env.VITE_QUANT_MARKET_WS_PATH || DEFAULT_PATH
 
   if (!host) {
-    console.warn('[TickWS] 缺少 quant-gateway 域名，无法建立连接')
     return null
   }
 
@@ -36,24 +166,32 @@ const resolveEnv = () => {
   }
 }
 
-const buildWsUrl = (stockCode) => {
-  if (!stockCode) return null
+const buildWsUrl = (stockCode, tradeDate) => {
+  if (!stockCode || !tradeDate) return null
   const envConfig = resolveEnv()
   if (!envConfig) return null
 
   const { protocol, host, port, path } = envConfig
   const portSegment = port ? `:${port}` : ''
+  const query = new URLSearchParams({
+    stockCode,
+    date: tradeDate,
+  })
 
-  return `${protocol}://${host}${portSegment}${path}?stockCode=${encodeURIComponent(stockCode)}`
+  return `${protocol}://${host}${portSegment}${path}?${query.toString()}`
 }
 
-export function useStockTicksStream({ stockCode, enabled }) {
+export function useStockTicksStream({ stockCode, enabled, tradeDate }) {
   const socketRef = useRef(null)
   const reconnectTimerRef = useRef(null)
   const stockCodeRef = useRef(stockCode)
   const enabledRef = useRef(enabled)
   const tradingFinishedRef = useRef(false)
   const connectRef = useRef(null)
+  const historyRef = useRef([])
+  const mergedTicksRef = useRef([])
+  const [streamState, setStreamState] = useState(INITIAL_STREAM_STATE)
+  const [resolvedTradeDate, setResolvedTradeDate] = useState(() => tradeDate || getEffectiveTradingDate())
 
   useEffect(() => {
     stockCodeRef.current = stockCode
@@ -62,6 +200,76 @@ export function useStockTicksStream({ stockCode, enabled }) {
   useEffect(() => {
     enabledRef.current = enabled
   }, [enabled])
+
+  useEffect(() => {
+    const nextResolved = tradeDate || getEffectiveTradingDate()
+    setResolvedTradeDate((prev) => (prev === nextResolved ? prev : nextResolved))
+  }, [tradeDate])
+
+  const resetState = useCallback(() => {
+    historyRef.current = []
+    mergedTicksRef.current = []
+    setStreamState(INITIAL_STREAM_STATE)
+  }, [])
+
+  const updateConnectionState = useCallback((nextState) => {
+    setStreamState((prev) => {
+      if (prev.connectionState === nextState) {
+        return prev
+      }
+      return {
+        ...prev,
+        connectionState: nextState,
+      }
+    })
+  }, [])
+
+  const logInvalidTick = useCallback((tick, reasonText) => {
+    if (!tick) return
+    const code = tick.ts_code || tick.symbol || stockCodeRef.current || 'N/A'
+    const dateStr = normalizeDateString(tick.date || tick.trade_date || tick.trading_date || '')
+    const timeStr = tick.time || tick.trade_time || '--'
+    console.log(`[TickWS:${code}] ⚠️ 丢弃异常 tick: ${reasonText} [${dateStr || '--'} ${timeStr}]`)
+  }, [])
+
+  const applyTickPayload = useCallback((payload, tradeDateMeta) => {
+    setStreamState((prev) => {
+      const rawStatus = payload?.status || prev.status || 'non_trading'
+      const normalizedStatus = rawStatus === 'rest' ? 'non_trading' : rawStatus
+      const incomingHistory = Array.isArray(payload?.historyTicks) ? payload.historyTicks : []
+      const incomingLatest = Array.isArray(payload?.latestTicks) ? payload.latestTicks : []
+      let filteredHistory = filterValidTicks(incomingHistory, { onInvalid: logInvalidTick })
+      let filteredLatest = filterValidTicks(incomingLatest, { onInvalid: logInvalidTick })
+
+      if (!filteredHistory.length && incomingHistory.length) {
+        filteredHistory = incomingHistory
+      }
+      if (!filteredLatest.length && incomingLatest.length) {
+        filteredLatest = incomingLatest
+      }
+
+      if (filteredHistory.length) {
+        historyRef.current = filteredHistory
+      } else if (incomingHistory.length) {
+        historyRef.current = incomingHistory
+      }
+
+      mergedTicksRef.current = normalizeTicks([
+        ...historyRef.current,
+        ...filteredLatest,
+      ])
+
+      return {
+        status: normalizedStatus,
+        historyTicks: historyRef.current,
+        latestTicks: filteredLatest,
+        ticks: mergedTicksRef.current,
+        tradeDate: tradeDateMeta ?? prev.tradeDate ?? resolvedTradeDate ?? null,
+        connectionState: prev.connectionState,
+        hasData: mergedTicksRef.current.length > 0,
+      }
+    })
+  }, [logInvalidTick, resolvedTradeDate])
 
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimerRef.current) {
@@ -75,38 +283,26 @@ export function useStockTicksStream({ stockCode, enabled }) {
     const currentSocket = socketRef.current
     if (currentSocket) {
       socketRef.current = null
-      try {
-        currentSocket.onopen = null
-        currentSocket.onmessage = null
-        currentSocket.onerror = null
-        currentSocket.onclose = null
-        currentSocket.close()
-      } catch (error) {
-        console.warn(`[TickWS:${stockCodeRef.current || 'N/A'}] 关闭连接出错`, error)
-      }
-      console.log(`[TickWS:${stockCodeRef.current || 'N/A'}] 🔚 ${label}`)
+      currentSocket.onopen = null
+      currentSocket.onmessage = null
+      currentSocket.onerror = null
+      currentSocket.onclose = null
+      currentSocket.close()
     }
-  }, [clearReconnectTimer])
+    updateConnectionState('idle')
+  }, [clearReconnectTimer, updateConnectionState])
 
   const scheduleReconnect = useCallback((reason) => {
     if (typeof window === 'undefined') return
     if (reconnectTimerRef.current) return
-    console.log(
-      `[TickWS:${stockCodeRef.current || 'N/A'}] ♻️ ${reason}，${
-        DEFAULT_RECONNECT_DELAY
-      }ms 后尝试重连`
-    )
+    updateConnectionState('reconnecting')
     reconnectTimerRef.current = window.setTimeout(() => {
       reconnectTimerRef.current = null
       if (enabledRef.current && !tradingFinishedRef.current) {
         connectRef.current?.()
-      } else {
-        console.log(
-          `[TickWS:${stockCodeRef.current || 'N/A'}] ⏹️ 已停止重连 enabled=${enabledRef.current} tradingFinished=${tradingFinishedRef.current}`
-        )
       }
     }, DEFAULT_RECONNECT_DELAY)
-  }, [])
+  }, [updateConnectionState])
 
   const connect = useCallback(() => {
     if (!enabledRef.current) {
@@ -118,71 +314,54 @@ export function useStockTicksStream({ stockCode, enabled }) {
       return
     }
 
-    const url = buildWsUrl(targetStock)
+    const targetDate = resolvedTradeDate
+    if (!targetDate) {
+      return
+    }
+
+    const url = buildWsUrl(targetStock, targetDate)
     if (!url) {
       return
     }
 
     closeSocket('准备建立新的连接')
     tradingFinishedRef.current = false
-    console.log(`[TickWS:${targetStock}] 🔌 准备连接 gateway -> ${url}`)
-
+    updateConnectionState('connecting')
     try {
       const socket = new WebSocket(url)
       socketRef.current = socket
 
       socket.onopen = () => {
-        console.log(`[TickWS:${targetStock}] ✅ 握手成功，等待推送`)
+        updateConnectionState('connected')
       }
 
       socket.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data)
+          console.log(`[TickWS:${targetStock}] 📦 数据`, payload)
           if (typeof payload.tradingFinished === 'boolean') {
             tradingFinishedRef.current = payload.tradingFinished
           }
-          const summary = {
-            type: payload.type,
-            phase: payload.phase,
-            message: payload.message,
-            tradingDate: payload.tradingDate,
-            tradingFinished: payload.tradingFinished,
-            ticksCount: Array.isArray(payload.ticks) ? payload.ticks.length : 0,
-            hasLastTick: Boolean(payload.tick),
-          }
-          console.log(`[TickWS:${targetStock}] 📩 收到 ${payload.type || 'UNKNOWN'} 消息`, summary)
-          if (payload.tick) {
-            console.log(`[TickWS:${targetStock}] 📈 最新tick`, payload.tick)
-          }
-          if (payload.type === 'ERROR') {
-            console.error(`[TickWS:${targetStock}] ❌ 服务端异常`, payload.message)
-          }
+          applyTickPayload(payload, targetDate)
         } catch (error) {
-          console.error(`[TickWS:${targetStock}] 🔄 解析消息失败`, error)
         }
       }
 
       socket.onerror = (event) => {
-        console.error(`[TickWS:${targetStock}] ⚠️ WebSocket 错误`, event)
+        updateConnectionState('disconnected')
       }
 
       socket.onclose = (event) => {
         socketRef.current = null
-        console.log(
-          `[TickWS:${targetStock}] 🔒 连接关闭 code=${event.code} reason=${event.reason ||
-            '无'} wasClean=${event.wasClean}`
-        )
+        updateConnectionState(tradingFinishedRef.current ? 'idle' : 'disconnected')
         if (enabledRef.current && !tradingFinishedRef.current) {
           scheduleReconnect('检测到异常关闭')
-        } else if (tradingFinishedRef.current) {
-          console.log(`[TickWS:${targetStock}] 📆 当日交易结束，服务端已主动关闭连接`)
         }
       }
     } catch (error) {
-      console.error(`[TickWS:${targetStock}] ❌ 建立 WebSocket 失败`, error)
       scheduleReconnect('连接异常')
     }
-  }, [closeSocket, scheduleReconnect])
+  }, [applyTickPayload, closeSocket, resolvedTradeDate, scheduleReconnect, updateConnectionState])
 
   useEffect(() => {
     connectRef.current = connect
@@ -191,6 +370,7 @@ export function useStockTicksStream({ stockCode, enabled }) {
   useEffect(() => {
     if (!enabled || !stockCode) {
       closeSocket('流未激活或股票未选择')
+      resetState()
       return
     }
 
@@ -199,7 +379,25 @@ export function useStockTicksStream({ stockCode, enabled }) {
     return () => {
       closeSocket('依赖变更/组件卸载')
     }
-  }, [enabled, stockCode, closeSocket, connect])
+  }, [enabled, stockCode, closeSocket, connect, resetState])
+
+  useEffect(() => {
+    if (!stockCode) {
+      resetState()
+    }
+  }, [stockCode, resetState])
+
+  useEffect(() => {
+    if (!resolvedTradeDate) {
+      return
+    }
+    setStreamState((prev) => ({
+      ...prev,
+      tradeDate: resolvedTradeDate,
+    }))
+  }, [resolvedTradeDate])
+
+  return streamState
 }
 
 export default useStockTicksStream

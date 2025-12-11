@@ -9,51 +9,6 @@
 }
 
 /* 顶部五大模块切换 */
-.main-modules {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 12px;
-  background: rgb(8, 8, 8);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  height: 48px;
-  overflow: hidden;
-  opacity: 1;
-}
-
-.main-modules.hidden {
-  height: 0 !important;
-  opacity: 0 !important;
-  pointer-events: none;
-}
-
-.module-tab {
-  padding: 8px 28px;
-  font-size: 16px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.75);
-  background: rgb(35, 35, 35); /* 亮一点的默认背景 */
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid rgba(60, 60, 60, 0.3);
-}
-
-.module-tab:hover {
-  color: rgba(255, 255, 255, 0.9);
-  border-color: rgba(80, 80, 80, 0.5);
-}
-
-/* 选中状态 - 保持圆角，只发光，不凹陷，宽高不变 */
-.module-tab.active {
-  color: #ffffff;
-  background: rgb(25, 25, 25); /* 稍暗的背景 */
-  border: 2px solid rgba(255, 255, 255, 0.6); /* 白色边框 */
-  border-radius: 8px; /* 保持圆角 */
-  box-shadow: inset 0 0 25px rgba(255, 255, 255, 0.2); /* 只保留内发光 */
-  padding: 7px 27px; /* 上下减1px，左右减1px，补偿border从1px变成2px */
-}
-
 /* 模块内容区域 */
 .module-content {
   flex: 1;
@@ -242,6 +197,78 @@
   width: 100%;
   height: 100%;
   transition: opacity 0.4s ease;
+}
+
+.intraday-board-tabs .ant-tabs-nav::before {
+  border: none !important;
+}
+
+.intraday-board-tabs .ant-tabs-tab {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.intraday-board-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #ffffff !important;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
+}
+
+.board-placeholder {
+  width: 100%;
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+}
+
+.five-level-board {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.orderbook-side {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.side-title {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 8px;
+}
+
+.orderbook-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.orderbook-row {
+  display: grid;
+  grid-template-columns: 50px 1fr 1fr;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.orderbook-row .price.ask {
+  color: #52c41a;
+}
+
+.orderbook-row .price.bid {
+  color: #f5222d;
+}
+
+.orderbook-row .volume {
+  text-align: right;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.level-label {
+  color: rgba(255, 255, 255, 0.55);
 }
 
 /* 图表区域 - 动态高度 */

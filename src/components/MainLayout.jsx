@@ -40,6 +40,14 @@ const menuItems = [
   },
 ]
 
+const marketSubMenuItems = [
+  { key: 'overview', label: '市场总览' },
+  { key: 'stock', label: '个股' },
+  { key: 'sector', label: '板块' },
+  { key: 'capital', label: '资金' },
+  { key: 'sentiment', label: '市场情绪' },
+]
+
 function MainLayoutInner() {
   const { visible, targetNodeId, openKnowledge, closeKnowledge } = useKnowledgeBase()
   const navigate = useNavigate()
@@ -60,8 +68,8 @@ function MainLayoutInner() {
 
   const displayName = getDisplayName()
 
-  const handleMenuClick = ({ key }) => {
-    navigate(key)
+  const handleMarketSubMenuClick = ({ key }) => {
+    navigate(`/quotes?module=${key}`)
   }
 
   const handleLogout = () => {
@@ -125,16 +133,35 @@ function MainLayoutInner() {
 
           {/* 菜单按钮组 */}
           <div style={{ display: 'flex', gap: '8px' }}>
-            {menuItems.map(item => (
-              <div
-                key={item.key}
-                className={`top-menu-btn ${location.pathname === item.key ? 'active' : ''}`}
-                onClick={() => navigate(item.key)}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </div>
-            ))}
+            {menuItems.map(item => {
+              if (item.key === '/quotes') {
+                return (
+                  <Dropdown
+                    key={item.key}
+                    trigger={['hover', 'click']}
+                    menu={{ items: marketSubMenuItems, onClick: handleMarketSubMenuClick, className: 'top-menu-dropdown' }}
+                  >
+                    <div
+                      className={`top-menu-btn ${location.pathname === item.key ? 'active' : ''}`}
+                      onClick={() => navigate(item.key)}
+                    >
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </div>
+                  </Dropdown>
+                )
+              }
+              return (
+                <div
+                  key={item.key}
+                  className={`top-menu-btn ${location.pathname === item.key ? 'active' : ''}`}
+                  onClick={() => navigate(item.key)}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </div>
+              )
+            })}
           </div>
         </div>
 

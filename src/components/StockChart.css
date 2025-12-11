@@ -82,6 +82,96 @@
   font-size: 10px;
 }
 
+.intraday-proxy-chart {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+.connection-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.connection-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+  box-shadow: 0 0 4px currentColor;
+}
+
+.connection-dot.blink {
+  animation: connection-blink 1.2s ease-in-out infinite;
+}
+
+.connection-dot::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.18;
+  filter: blur(4px);
+  animation: connection-glow 1.2s ease-in-out infinite;
+}
+
+.connection-dot.blink::after {
+  animation: connection-glow 0.8s ease-in-out infinite;
+}
+
+.connection-label {
+  font-size: 13px;
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+@keyframes connection-glow {
+  0% {
+    opacity: 0.12;
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+  50% {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% {
+    opacity: 0.12;
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+}
+
+.intraday-indicator-placeholder {
+  margin-top: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 16px;
+  color: rgba(255, 255, 255, 0.65);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.intraday-indicator-placeholder-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.intraday-indicator-placeholder-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
 /* 股票数据展示区域滚动条样式 */
 .stock-data-display::-webkit-scrollbar {
   height: 6px;
@@ -107,5 +197,20 @@
   }
   100% {
     background-position: 200% 0;
+  }
+}
+
+@keyframes connection-blink {
+  0% {
+    opacity: 0.3;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0.3;
+    transform: scale(0.85);
   }
 }
