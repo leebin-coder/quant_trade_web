@@ -813,12 +813,6 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
       },
       priceScaleId: '',
     })
-    chart.priceScale('').applyOptions({
-      scaleMargins: {
-        top: 0.08,
-        bottom: 0.05,
-      },
-    })
     volumeChartInstanceRef.current = chart
     volumeSeriesRef.current = series
     ensureScaleSync()
@@ -901,7 +895,7 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
     mainScale?.setVisibleRange(range)
     volumeScale?.setVisibleRange(range)
     hasFitInitialDataRef.current = true
-  }, [virtualRange, normalizedTicks.length])
+  }, [virtualRange, normalizedTicks.length, skeletonData.length])
 
   useEffect(() => {
     const series = mainSeriesRef.current

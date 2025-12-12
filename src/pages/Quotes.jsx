@@ -688,9 +688,9 @@ const formatDepthVolume = (value) => {
   const num = Number(value)
   if (!Number.isFinite(num)) return '--'
   if (Math.abs(num) >= 10000) {
-    return `${(num / 10000).toFixed(2)}万股`
+    return `${(num / 10000).toFixed(2)}万`
   }
-  return `${Math.round(num)}股`
+  return `${Math.round(num)}`
 }
 
 const resolvePreCloseValue = (tick) => {
