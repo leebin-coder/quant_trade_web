@@ -206,6 +206,23 @@ export function useStockTicksStream({ stockCode, enabled, tradeDate }) {
     setResolvedTradeDate((prev) => (prev === nextResolved ? prev : nextResolved))
   }, [tradeDate])
 
+  useEffect(() => {
+    if (tradeDate || typeof window === 'undefined') {
+      return undefined
+    }
+
+    const syncLatestTradingDate = () => {
+      const nextResolved = getEffectiveTradingDate()
+      setResolvedTradeDate((prev) => (prev === nextResolved ? prev : nextResolved))
+    }
+
+    syncLatestTradingDate()
+    const timerId = window.setInterval(syncLatestTradingDate, 60 * 1000)
+    return () => {
+      window.clearInterval(timerId)
+    }
+  }, [tradeDate])
+
   const resetState = useCallback(() => {
     historyRef.current = []
     mergedTicksRef.current = []

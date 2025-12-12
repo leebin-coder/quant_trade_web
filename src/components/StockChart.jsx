@@ -100,6 +100,8 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
   ]
   const [measuredHeaderHeight, setMeasuredHeaderHeight] = useState(0)
   const LOWER_CHART_HEIGHT = 260
+  const DATA_BOARD_WIDTH = 200
+  const isDataBoardEnabled = true
   const CHART_LAYOUT = {
     mainBottom: 0.36,
     volumeTop: 0.57,
@@ -1129,6 +1131,17 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
   }
 
   const displayData = getDisplayData()
+  const shouldRenderBoardData = Boolean(displayData)
+  const formatHands = (value) => {
+    if (value === null || value === undefined) return '--'
+    const num = Number(value)
+    if (!Number.isFinite(num)) return '--'
+    const hands = num / 100
+    if (Math.abs(hands) >= 10000) {
+      return `${(hands / 10000).toFixed(2)}万手`
+    }
+    return `${Math.round(hands)}手`
+  }
 
   // 获取下方指标的当前数据
   const getLowerIndicatorData = () => {
@@ -2171,7 +2184,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                         : '#ffffff',
                       fontWeight: '500',
                       fontSize: '12px'
-                    }}>{(displayData.volume / 10000).toFixed(2)}万手</span>
+                    }}>{formatHands(displayData.volume)}</span>
                   </div>
 
                   {/* 成交额 */}
@@ -2580,7 +2593,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
           </div>
 
           {/* 右侧占位元素 - 与数据看板对齐 */}
-          <div style={{ width: '200px' }}></div>
+          {isDataBoardEnabled && <div style={{ width: `${DATA_BOARD_WIDTH}px` }}></div>}
         </div>
       )}
 
@@ -2588,8 +2601,8 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 200px',
-          gap: '40px',
+          gridTemplateColumns: isDataBoardEnabled ? `1fr ${DATA_BOARD_WIDTH}px` : '1fr',
+          gap: isDataBoardEnabled ? '40px' : '0px',
           width: '100%',
           flex: bodyHeight ? '0 0 auto' : 1,
           height: bodyHeight ? `${bodyHeight}px` : '100%',
@@ -3047,6 +3060,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
         </div>
 
         {/* 右侧：数据看板 - 固定200px，分为三个区块 */}
+        {isDataBoardEnabled && (
         <div
           style={{
             padding: `0 0 ${rpSpace.block} ${rpSpace.block}`,
@@ -3063,12 +3077,12 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                 <div style={{ color: '#999', textAlign: 'center', marginTop: rpSpace.large }}>暂无分时看板数据</div>
               )}
             </div>
-          ) : (
+          ) : shouldRenderBoardData ? (
             <Fragment>
-              <div style={{ paddingTop: '0px', flexShrink: 0 }}>
-                <div
-                  style={{
-                    fontSize: rpFont.heading,
+                <div style={{ paddingTop: '0px', flexShrink: 0 }}>
+                  <div
+                    style={{
+                      fontSize: rpFont.heading,
                     fontWeight: 'bold',
                     color: '#ffffff',
                     marginBottom: rpSpace.large,
@@ -3179,7 +3193,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                   {[
                     {
                       label: '成交量',
-                      value: displayData ? `${(displayData.volume / 10000).toFixed(2)} 万手` : '--',
+                      value: displayData ? formatHands(displayData.volume) : '--',
                       color: displayData
                         ? displayData.close > displayData.open
                           ? '#ef232a'
@@ -3420,11 +3434,29 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
               <div style={{ fontSize: rpFont.label, color: '#666' }}>
                 未选择指标
               </div>
-            )}
-          </div>
-        </Fragment>
+                )}
+              </div>
+            </Fragment>
+          ) : (
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#777',
+                fontSize: rpFont.secondary,
+                letterSpacing: 0.5,
+                textAlign: 'center',
+                padding: rpSpace.large,
+              }}
+            >
+              将鼠标悬停在图表上查看该位置的详细数据
+            </div>
           )}
         </div>
+        )}
       </div>
     </div>
   )

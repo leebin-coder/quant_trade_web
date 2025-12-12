@@ -87,10 +87,21 @@ function Quotes() {
     enabled: shouldStreamTicks,
     tradeDate: effectiveTradeDate,
   })
-  const latestTick = useMemo(
-    () => (intradayTicks.length ? intradayTicks[intradayTicks.length - 1] : null),
-    [intradayTicks]
+  const latestStreamTick = useMemo(
+    () => (streamTicks?.length ? streamTicks[streamTicks.length - 1] : null),
+    [streamTicks]
   )
+  const latestHistoryTick = useMemo(
+    () => (streamHistory?.length ? streamHistory[streamHistory.length - 1] : null),
+    [streamHistory]
+  )
+  const latestTick = useMemo(() => {
+    if (latestStreamTick) return latestStreamTick
+    if (intradayTicks.length) {
+      return intradayTicks[intradayTicks.length - 1]
+    }
+    return latestHistoryTick
+  }, [latestStreamTick, intradayTicks, latestHistoryTick])
 
   useEffect(() => {
     if (!shouldStreamTicks) {
@@ -672,11 +683,40 @@ const formatPriceValue = (value) => {
   return Number.isNaN(num) ? '--' : num.toFixed(2)
 }
 
-const formatVolumeValue = (value) => {
+const formatDepthVolume = (value) => {
   if (value === null || value === undefined) return '--'
   const num = Number(value)
-  if (Number.isNaN(num)) return '--'
-  return formatLargeNumber(num)
+  if (!Number.isFinite(num)) return '--'
+  if (Math.abs(num) >= 10000) {
+    return `${(num / 10000).toFixed(2)}万股`
+  }
+  return `${Math.round(num)}股`
+}
+
+const resolvePreCloseValue = (tick) => {
+  const candidates = [
+    tick?.preClose,
+    tick?.preclose,
+    tick?.pre_close,
+    tick?.preClosePrice,
+    tick?.prevClose,
+    tick?.previousClose,
+    tick?.pre_close_price,
+  ]
+  for (const value of candidates) {
+    if (value === 0 || value) {
+      const num = Number(value)
+      if (!Number.isNaN(num)) {
+        return num
+      }
+    }
+  }
+  return null
+}
+
+const resolveVolumeNumber = (value) => {
+  const num = Number(value)
+  return Number.isFinite(num) && num > 0 ? num : 0
 }
 
 function BoardPlaceholder({ message }) {
@@ -692,30 +732,86 @@ function FiveLevelBoard({ tick }) {
     return <Empty description="暂无五档数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
   }
 
+  const previousClose = resolvePreCloseValue(tick)
+  const sellRows = SELL_LEVELS.map((level) => ({
+    level,
+    price: tick[`a${level}_p`],
+    volume: resolveVolumeNumber(tick[`a${level}_v`]),
+    side: 'sell',
+  }))
+  const buyRows = BUY_LEVELS.map((level) => ({
+    level,
+    price: tick[`b${level}_p`],
+    volume: resolveVolumeNumber(tick[`b${level}_v`]),
+    side: 'buy',
+  }))
+  const combinedVolumes = [...sellRows, ...buyRows].map((row) => row.volume)
+  const maxVolume = combinedVolumes.length ? Math.max(...combinedVolumes, 0) : 0
+  const safeMaxVolume = maxVolume > 0 ? maxVolume : 1
+
+  const renderRow = (row) => {
+    const widthPercent = row.volume > 0 ? (row.volume / safeMaxVolume) * 100 : 0
+    let priceColor = row.side === 'sell' ? '#52c41a' : '#f5222d'
+    if (previousClose !== null && previousClose !== undefined && row.price !== null && row.price !== undefined) {
+      const numericPrice = Number(row.price)
+      if (!Number.isNaN(numericPrice)) {
+        if (numericPrice > previousClose) {
+          priceColor = '#ef232a'
+        } else if (numericPrice < previousClose) {
+          priceColor = '#14b143'
+        } else {
+          priceColor = '#8c8c8c'
+        }
+      }
+    } else {
+      priceColor = '#8c8c8c'
+    }
+
+    return (
+      <div className={`orderbook-row ${row.side}`} key={`${row.side}-${row.level}`}>
+        <div
+          className={`orderbook-row-bar ${row.side}`}
+          style={{ width: `${Math.min(100, Math.max(6, widthPercent))}%` }}
+        />
+        <span className="level-label">{`${row.side === 'sell' ? '卖' : '买'}${row.level}`}</span>
+        <span className="price" style={{ color: priceColor }}>{formatPriceValue(row.price)}</span>
+        <span className="volume">{formatDepthVolume(row.volume)}</span>
+      </div>
+    )
+  }
+
+  const totalSellVolume = sellRows.reduce((sum, row) => sum + row.volume, 0)
+  const totalBuyVolume = buyRows.reduce((sum, row) => sum + row.volume, 0)
+  const totalVolume = totalSellVolume + totalBuyVolume
+  const buyRatio = totalVolume > 0 ? (totalBuyVolume / totalVolume) : 0.5
+  const sellRatio = 1 - buyRatio
+
   return (
     <div className="five-level-board">
       <div className="orderbook-side">
         <div className="side-title">卖盘</div>
         <div className="orderbook-rows">
-          {SELL_LEVELS.map(level => (
-            <div className="orderbook-row" key={`ask-${level}`}>
-              <span className="level-label">卖{level}</span>
-              <span className="price ask">{formatPriceValue(tick[`a${level}_p`])}</span>
-              <span className="volume">{formatVolumeValue(tick[`a${level}_v`])}</span>
-            </div>
-          ))}
+          {sellRows.map(renderRow)}
+        </div>
+      </div>
+      <div className="orderbook-ratio">
+        <div className="ratio-labels">
+          <span>卖 {formatDepthVolume(totalSellVolume)}</span>
+          <span>买 {formatDepthVolume(totalBuyVolume)}</span>
+        </div>
+        <div className="ratio-bar">
+          <div className="ratio-segment sell" style={{ flexBasis: `${sellRatio * 100}%` }} />
+          <div className="ratio-segment buy" style={{ flexBasis: `${buyRatio * 100}%` }} />
+        </div>
+        <div className="ratio-values">
+          <span style={{ color: '#14b143' }}>{(sellRatio * 100).toFixed(1)}%</span>
+          <span style={{ color: '#ef232a' }}>{(buyRatio * 100).toFixed(1)}%</span>
         </div>
       </div>
       <div className="orderbook-side">
         <div className="side-title">买盘</div>
         <div className="orderbook-rows">
-          {BUY_LEVELS.map(level => (
-            <div className="orderbook-row" key={`bid-${level}`}>
-              <span className="level-label">买{level}</span>
-              <span className="price bid">{formatPriceValue(tick[`b${level}_p`])}</span>
-              <span className="volume">{formatVolumeValue(tick[`b${level}_v`])}</span>
-            </div>
-          ))}
+          {buyRows.map(renderRow)}
         </div>
       </div>
     </div>

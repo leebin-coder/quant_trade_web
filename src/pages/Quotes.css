@@ -238,28 +238,29 @@
 .side-title {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .orderbook-rows {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
 .orderbook-row {
   display: grid;
-  grid-template-columns: 50px 1fr 1fr;
+  grid-template-columns: 56px 1fr 1fr;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.85);
+  position: relative;
+  align-items: center;
+  min-height: 26px;
+  overflow: hidden;
 }
 
-.orderbook-row .price.ask {
-  color: #52c41a;
-}
-
-.orderbook-row .price.bid {
-  color: #f5222d;
+.orderbook-row span {
+  position: relative;
+  z-index: 1;
 }
 
 .orderbook-row .volume {
@@ -269,6 +270,68 @@
 
 .level-label {
   color: rgba(255, 255, 255, 0.55);
+}
+
+.orderbook-row-bar {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  right: 0;
+  border-radius: 4px 0 0 4px;
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.orderbook-row-bar.sell {
+  background: linear-gradient(90deg, rgba(20, 177, 67, 0.35), rgba(20, 177, 67, 0.8));
+}
+
+.orderbook-row-bar.buy {
+  background: linear-gradient(90deg, rgba(239, 35, 42, 0.35), rgba(239, 35, 42, 0.85));
+}
+
+.orderbook-ratio {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.01);
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ratio-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.ratio-bar {
+  width: 100%;
+  height: 14px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+}
+
+.ratio-segment.sell {
+  background: rgba(20, 177, 67, 0.85);
+}
+
+.ratio-segment.buy {
+  background: rgba(239, 35, 42, 0.9);
+}
+
+.ratio-values {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 /* 图表区域 - 动态高度 */
