@@ -69,6 +69,8 @@ const SESSION_SEGMENTS = [
 
 const CROSSHAIR_LABEL_COLOR = '#ffd666'
 const PRICE_MULTIPLIER = 100
+const RIGHT_PADDING_RATIO = 0.11
+const MIN_RIGHT_PADDING = 200
 
 const getTickDate = (tick) => tick?.date || tick?.trade_date || tick?.trading_date || null
 
@@ -86,11 +88,13 @@ const buildDaySegments = (dateStr) => {
       return null
     }
     const virtualStart = base + accumulated
-    accumulated += end - start
+    const duration = end - start
+    accumulated += duration
     return {
       start,
       end,
       virtualStart,
+      virtualEnd: virtualStart + duration,
     }
   }).filter(Boolean)
 }
@@ -116,6 +120,15 @@ const normalizeTicksForSessions = (ticks, fallbackDate) => {
   const safeTicks = Array.isArray(ticks) ? ticks : []
   const sampleDate = getTickDate(safeTicks.find((item) => getTickDate(item))) || fallbackDate
   const segments = buildDaySegments(sampleDate)
+  const convertToVirtualTimestamp = (actualTs) => {
+    if (!Number.isFinite(actualTs)) return null
+    for (const segment of segments) {
+      if (actualTs >= segment.start && actualTs <= segment.end) {
+        return Math.floor((segment.virtualStart + (actualTs - segment.start)) / 1000)
+      }
+    }
+    return Math.floor(actualTs / 1000)
+  }
   const ordered = safeTicks.slice().sort((a, b) => {
     const left = parseTickTimestamp(a) || 0
     const right = parseTickTimestamp(b) || 0
@@ -142,7 +155,7 @@ const normalizeTicksForSessions = (ticks, fallbackDate) => {
         price = preCloseCandidate
       }
     }
-    const virtualTime = Math.floor(actualTs / 1000)
+    const virtualTime = convertToVirtualTimestamp(actualTs)
     const point = {
       ...tick,
       virtualTime,
@@ -172,44 +185,43 @@ const normalizeTicksForSessions = (ticks, fallbackDate) => {
     }
   })
   const sessionWindows = []
-  if (segments[0]) {
+  segments.forEach((segment, index) => {
     sessionWindows.push({
-      start: Math.floor(segments[0].start / 1000),
-      end: Math.floor(segments[0].end / 1000),
-      type: 'auction',
+      start: Math.floor(segment.virtualStart / 1000),
+      end: Math.floor(segment.virtualEnd / 1000),
+      type: index === 0 ? 'auction' : 'regular',
     })
-  }
+  })
   const normalizedDate = normalizeDate(sampleDate)
-  const defaultStartTs = normalizedDate
-    ? Date.parse(`${normalizedDate}T09:15:00+08:00`)
-    : null
-  const pivotTs = normalizedDate
-    ? Date.parse(`${normalizedDate}T11:30:00+08:00`)
-    : null
-  const earliestTs = normalized.length ? normalized[0].__timestamp : null
-  const latestTs = normalized.length ? normalized[normalized.length - 1].__timestamp : null
-  let fromTs = earliestTs ?? defaultStartTs ?? pivotTs
-  let toTs = latestTs ?? pivotTs
-  if (pivotTs && fromTs) {
-    const mirroredTo = pivotTs + (pivotTs - fromTs)
-    if (!toTs || toTs < mirroredTo) {
-      toTs = mirroredTo
-    }
+  const firstVirtual = sessionWindows.length ? sessionWindows[0].start : null
+  const lastVirtual = sessionWindows.length ? sessionWindows[sessionWindows.length - 1].end : null
+  const earliestPointVirtual = normalized.length ? normalized[0].virtualTime : null
+  const latestPointVirtual = normalized.length ? normalized[normalized.length - 1].virtualTime : null
+  let fromTs = firstVirtual ?? earliestPointVirtual
+  let toTs = lastVirtual ?? latestPointVirtual
+  if (earliestPointVirtual !== null) {
+    fromTs = Math.min(fromTs ?? earliestPointVirtual, earliestPointVirtual)
   }
-  if (latestTs && (!toTs || latestTs > toTs)) {
-    toTs = latestTs
+  if (latestPointVirtual !== null) {
+    toTs = Math.max(toTs ?? latestPointVirtual, latestPointVirtual)
   }
-  if (!fromTs) {
-    fromTs = pivotTs ?? Date.now()
+  if (!Number.isFinite(fromTs)) {
+    const defaultStart = normalizedDate
+      ? Math.floor(Date.parse(`${normalizedDate}T09:15:00+08:00`) / 1000)
+      : null
+    fromTs = defaultStart ?? Math.floor(Date.now() / 1000)
   }
-  if (!toTs) {
-    toTs = fromTs + 60 * 1000
+  if (!Number.isFinite(toTs)) {
+    const defaultEnd = normalizedDate
+      ? Math.floor(Date.parse(`${normalizedDate}T15:00:00+08:00`) / 1000)
+      : null
+    toTs = defaultEnd ?? (fromTs + 60)
   }
   if (toTs <= fromTs) {
-    toTs = fromTs + 60 * 1000
+    toTs = fromTs + 60
   }
   const virtualRange = Number.isFinite(fromTs) && Number.isFinite(toTs)
-    ? { from: Math.floor(fromTs / 1000), to: Math.floor(toTs / 1000) }
+    ? { from: Math.floor(fromTs), to: Math.floor(toTs) }
     : null
 
   return {
@@ -286,6 +298,14 @@ const resolvePointLow = (point, fallback) => {
     }
   }
   return fallback ?? null
+}
+
+const SCALE_LABEL_WIDTH = 10
+
+const padScaleLabel = (label) => {
+  const text = typeof label === 'string' ? label : String(label ?? '--')
+  if (text.length >= SCALE_LABEL_WIDTH) return text
+  return text.padStart(SCALE_LABEL_WIDTH, ' ')
 }
 
 const formatPriceValue = (scaledValue) => {
@@ -367,6 +387,21 @@ const buildVolumeSeriesData = (ticks) => {
     .filter(Boolean)
 }
 
+const formatVolumeLabel = (value) => {
+  if (value === null || value === undefined) return padScaleLabel('--')
+  const num = Number(value)
+  if (!Number.isFinite(num)) return padScaleLabel('--')
+  const abs = Math.abs(num)
+  let label
+  if (abs >= 100000000) {
+    label = `${(num / 100000000).toFixed(2)}亿`
+  } else if (abs >= 10000) {
+    label = `${(num / 10000).toFixed(2)}万`
+  } else {
+    label = `${Math.round(num)}`
+  }
+  return padScaleLabel(label)
+}
 function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
   const mainChartRef = useRef(null)
   const volumeChartRef = useRef(null)
@@ -381,7 +416,12 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
   const scaleSyncLockRef = useRef(false)
   const hasFitInitialDataRef = useRef(false)
   const crosshairPriceLineRef = useRef(null)
+  const lastInteractionRef = useRef(Date.now())
+  const hoverStateRef = useRef(false)
+  const autoCenterLockRef = useRef(false)
   const [blinkPhase, setBlinkPhase] = useState(false)
+  const lastTickCountRef = useRef(0)
+  const lastVirtualRangeRef = useRef(null)
 
   const heights = useMemo(() => {
     const minSecondary = 80
@@ -433,6 +473,12 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
 
   const normalizedResult = useMemo(() => normalizeTicksForSessions(data, fallbackDate), [data, fallbackDate])
   const normalizedTicks = normalizedResult.points
+  const hasLineData = useMemo(() => {
+    return normalizedTicks.some((tick) => {
+      const price = resolvePrice(tick)
+      return Number.isFinite(tick?.virtualTime) && price !== null && price !== undefined
+    })
+  }, [normalizedTicks])
   const sessionWindows = normalizedResult.sessionWindows || []
   const virtualRange = normalizedResult.virtualRange
   const stockInfoPreClose = useMemo(() => resolvePreClose(stockInfo), [stockInfo])
@@ -452,6 +498,45 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
     if (!base || !Number.isFinite(base) || base <= 0) return null
     return base
   }, [previousClose, normalizedTicks, stockInfoPrice])
+  const tradingDayBounds = useMemo(() => {
+    const normalized = normalizeDate(fallbackDate)
+    if (!normalized) return null
+    const dayStartMs = Date.parse(`${normalized}T09:15:00+08:00`)
+    const dayEndMs = Date.parse(`${normalized}T15:00:00+08:00`)
+    if (Number.isNaN(dayStartMs) || Number.isNaN(dayEndMs) || dayEndMs <= dayStartMs) return null
+    return {
+      start: Math.floor(dayStartMs / 1000),
+      end: Math.floor(dayEndMs / 1000),
+    }
+  }, [fallbackDate])
+
+  const paddedRange = useMemo(() => {
+    if (!virtualRange || !Number.isFinite(virtualRange.from) || !Number.isFinite(virtualRange.to)) {
+      return null
+    }
+    const startBase = Number.isFinite(tradingDayBounds?.start)
+      ? tradingDayBounds.start
+      : virtualRange.from
+    const endBase = Math.max(virtualRange.to, startBase + 60)
+    const coreSpan = Math.max(endBase - startBase, 1)
+    const rightPad = Math.max(Math.floor(coreSpan * RIGHT_PADDING_RATIO), MIN_RIGHT_PADDING)
+    const from = Math.max(0, Math.floor(startBase))
+    let to = Math.floor(endBase + rightPad)
+    if (Number.isFinite(tradingDayBounds?.end)) {
+      to = Math.min(to, tradingDayBounds.end + Math.floor(rightPad * 0.5))
+    }
+    if (to <= from) {
+      to = from + 60
+    }
+    return { from, to }
+  }, [virtualRange, tradingDayBounds])
+  const defaultVisibleRange = useMemo(() => {
+    if (!paddedRange) return null
+    return {
+      from: Math.floor(paddedRange.from),
+      to: Math.floor(paddedRange.to),
+    }
+  }, [paddedRange])
   const lastPoint = normalizedTicks.length ? normalizedTicks[normalizedTicks.length - 1] : null
   const lastHigh = resolvePointHigh(lastPoint, basePrice ?? null)
   const lastLow = resolvePointLow(lastPoint, basePrice ?? null)
@@ -463,6 +548,26 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
       hideCrosshairPriceLine()
     }
   }, [normalizedResult])
+  useEffect(() => {
+    const prevCount = lastTickCountRef.current
+    if (!normalizedTicks.length || normalizedTicks.length < prevCount) {
+      hasFitInitialDataRef.current = false
+    }
+    lastTickCountRef.current = normalizedTicks.length
+  }, [normalizedTicks.length])
+
+  useEffect(() => {
+    if (!defaultVisibleRange) {
+      lastVirtualRangeRef.current = null
+      return
+    }
+    const nextRange = defaultVisibleRange
+    const prevRange = lastVirtualRangeRef.current
+    if (!prevRange || prevRange.from !== nextRange.from || prevRange.to !== nextRange.to) {
+      hasFitInitialDataRef.current = false
+      lastVirtualRangeRef.current = nextRange
+    }
+  }, [defaultVisibleRange])
 
   useEffect(() => {
     return () => {
@@ -506,6 +611,12 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
     }
   }, [])
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__lastIntradayTickCount = normalizedTicks.length
+    }
+  }, [normalizedTicks.length])
+
   const extractLabelKey = (time) => {
     if (typeof time === 'number') {
       return Math.round(time)
@@ -535,28 +646,28 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
     return ''
   }
 
-  const formatCrosshairTime = (time) => {
-    const meta = getLabelMeta(time)
-    if (meta?.full) {
-      return meta.full
-    }
-    const key = extractLabelKey(time)
-    if (key !== null) {
-      const date = new Date(key * 1000)
-      const yyyy = date.getFullYear()
-      const mm = String(date.getMonth() + 1).padStart(2, '0')
-      const dd = String(date.getDate()).padStart(2, '0')
-      const hh = String(date.getHours()).padStart(2, '0')
-      const mi = String(date.getMinutes()).padStart(2, '0')
-      const ss = String(date.getSeconds()).padStart(2, '0')
-      return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
-    }
-    return ''
+const formatCrosshairTime = (time) => {
+  const meta = getLabelMeta(time)
+  if (meta?.full) {
+    return meta.full
   }
+  const key = extractLabelKey(time)
+  if (key !== null) {
+    const date = new Date(key * 1000)
+    const yyyy = date.getFullYear()
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    const hh = String(date.getHours()).padStart(2, '0')
+    const mi = String(date.getMinutes()).padStart(2, '0')
+    const ss = String(date.getSeconds()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`
+  }
+  return ''
+}
 
-  const ensureScaleSync = () => {
-    if (!mainChartInstanceRef.current || !volumeChartInstanceRef.current) return
-    if (scaleSyncCleanupRef.current) return
+const ensureScaleSync = () => {
+  if (!mainChartInstanceRef.current || !volumeChartInstanceRef.current) return
+  if (scaleSyncCleanupRef.current) return
     const mainScale = mainChartInstanceRef.current.timeScale()
     const volumeScale = volumeChartInstanceRef.current.timeScale()
 
@@ -687,6 +798,7 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
       skeletonSeries.setData(skeletonDataRef.current)
     }
     ensureScaleSync()
+    const mainTimeScale = chart.timeScale()
     const handleCrosshairMove = (param) => {
       if (!param || !param.point || param.point.x < 0 || param.point.y < 0) {
         hideCrosshairPriceLine()
@@ -809,9 +921,24 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
     const series = chart.addHistogramSeries({
       color: '#4fc3f7',
       priceFormat: {
-        type: 'volume',
+        type: 'custom',
+        formatter: formatVolumeLabel,
       },
+      lastValueVisible: false,
+      priceLineVisible: true,
       priceScaleId: '',
+    })
+    chart.priceScale('').applyOptions({
+      visible: true,
+      borderVisible: false,
+      autoScale: true,
+      ticksVisible: true,
+      entireTextOnly: false,
+      alignLabels: true,
+      scaleMargins: {
+        top: 0.08,
+        bottom: 0.05,
+      },
     })
     volumeChartInstanceRef.current = chart
     volumeSeriesRef.current = series
@@ -845,13 +972,14 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
   }, [heights.volume])
 
   const skeletonData = useMemo(() => {
-    if (!virtualRange) return []
+    const effectiveRange = paddedRange || virtualRange
+    if (!effectiveRange) return []
     const reference = basePrice && Number.isFinite(basePrice) && basePrice > 0 ? basePrice : 1
     const value = Math.round(reference * PRICE_MULTIPLIER)
     const seen = new Set()
     const points = []
     const addPoint = (rawTime) => {
-      if (rawTime === undefined || rawTime === null) return
+      if (rawTime === undefined || rawTime === null || Number.isNaN(rawTime)) return
       const key = Math.round(rawTime)
       if (seen.has(key)) return
       seen.add(key)
@@ -861,16 +989,19 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
       addPoint(session.start)
       addPoint(session.end)
     })
-    addPoint(virtualRange.from)
-    addPoint(virtualRange.to)
+    addPoint(effectiveRange.from)
+    addPoint(effectiveRange.to)
     points.sort((a, b) => a.time - b.time)
     return points
-  }, [sessionWindows, virtualRange, basePrice])
+  }, [sessionWindows, virtualRange, paddedRange, basePrice])
 
   useEffect(() => {
     const lineData = buildLineSeriesData(normalizedTicks)
     if (mainSeriesRef.current) {
       mainSeriesRef.current.setData(lineData)
+      if (!lineData.length) {
+        mainSeriesRef.current.setMarkers([])
+      }
     }
     const volumeData = buildVolumeSeriesData(normalizedTicks)
     if (volumeSeriesRef.current) {
@@ -885,17 +1016,18 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
   }, [skeletonData])
 
   useEffect(() => {
-    if (!virtualRange) return
-    if (!Number.isFinite(virtualRange.from) || !Number.isFinite(virtualRange.to)) return
-    if (virtualRange.to <= virtualRange.from) return
-    if (!normalizedTicks.length) return
+    if (!defaultVisibleRange) return
+    if (!hasLineData) return
+    if (hasFitInitialDataRef.current) return
     const mainScale = mainChartInstanceRef.current?.timeScale()
     const volumeScale = volumeChartInstanceRef.current?.timeScale()
-    const range = { from: virtualRange.from, to: virtualRange.to }
-    mainScale?.setVisibleRange(range)
-    volumeScale?.setVisibleRange(range)
+    if (!mainScale || !volumeScale) return
+    autoCenterLockRef.current = true
+    mainScale.setVisibleRange(defaultVisibleRange)
+    volumeScale.setVisibleRange(defaultVisibleRange)
+    autoCenterLockRef.current = false
     hasFitInitialDataRef.current = true
-  }, [virtualRange, normalizedTicks.length, skeletonData.length])
+  }, [defaultVisibleRange, hasLineData])
 
   useEffect(() => {
     const series = mainSeriesRef.current
@@ -923,6 +1055,11 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
       autoscaleInfoProvider: provider,
     })
     chart.priceScale('right').applyOptions({
+      visible: true,
+      borderVisible: false,
+      ticksVisible: true,
+      entireTextOnly: false,
+      alignLabels: true,
       autoScale: false,
       scaleMargins: {
         top: 0.12,
@@ -937,13 +1074,22 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
 
   useEffect(() => {
     if (!mainSeriesRef.current) return
-    if (!normalizedTicks.length) {
+    if (!normalizedTicks.length || !hasLineData) {
       mainSeriesRef.current.setMarkers([])
       return
     }
-    const lastPoint = normalizedTicks[normalizedTicks.length - 1]
-    const lastPrice = resolvePrice(lastPoint)
-    if (!lastPoint?.virtualTime || lastPrice === null) {
+    let lastPoint = null
+    let lastPrice = null
+    for (let i = normalizedTicks.length - 1; i >= 0; i -= 1) {
+      const candidate = normalizedTicks[i]
+      const candidatePrice = resolvePrice(candidate)
+      if (candidate?.virtualTime && candidatePrice !== null && candidatePrice !== undefined && Number.isFinite(candidatePrice)) {
+        lastPoint = candidate
+        lastPrice = candidatePrice
+        break
+      }
+    }
+    if (!lastPoint || lastPrice === null) {
       mainSeriesRef.current.setMarkers([])
       return
     }
@@ -969,47 +1115,38 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
         price: Math.round(lastPrice * PRICE_MULTIPLIER),
       },
     ])
-  }, [normalizedTicks, blinkPhase])
+  }, [normalizedTicks, blinkPhase, hasLineData])
 
-  const auctionBands = useMemo(() => {
-    if (!virtualRange || !sessionWindows?.length) return []
-    const totalSpan = Math.max(virtualRange.to - virtualRange.from, 1)
-    return sessionWindows
-      .filter((session) => session.type === 'auction')
-      .map((session) => {
-        const leftPercent = ((session.start - virtualRange.from) / totalSpan) * 100
-        const widthPercent = ((session.end - session.start) / totalSpan) * 100
-        return {
-          key: `${session.start}-${session.end}`,
-          left: Math.max(0, leftPercent),
-          width: Math.max(0, widthPercent),
-        }
-      })
-  }, [sessionWindows, virtualRange])
-
-  const renderAuctionOverlay = () => {
-    if (!auctionBands.length) return null
-    return (
-      <div className="intraday-session-overlay">
-        {auctionBands.map((band) => (
-          <div
-            key={band.key}
-            className="intraday-session-band"
-            style={{ left: `${band.left}%`, width: `${band.width}%` }}
-          />
-        ))}
-      </div>
-    )
+  const handlePointerActivity = () => {
+    lastInteractionRef.current = Date.now()
   }
+
+  const handleMouseEnter = () => {
+    hoverStateRef.current = true
+  }
+
+  const handleMouseLeave = () => {
+    hoverStateRef.current = false
+    hideCrosshairPriceLine()
+  }
+
+
 
   return (
     <div className="intraday-chart-root">
-      <div className="intraday-chart-panels" style={{ height }}>
+      <div
+        className="intraday-chart-panels"
+        style={{ height }}
+        onPointerDown={handlePointerActivity}
+        onWheel={handlePointerActivity}
+        onTouchStart={handlePointerActivity}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <div
           className="intraday-main-chart"
           style={{ height: heights.main }}
         >
-          {renderAuctionOverlay()}
           <div
             className="intraday-chart-surface"
             ref={mainChartRef}
@@ -1017,8 +1154,6 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
           />
         </div>
         <div className="intraday-volume-chart" style={{ height: heights.volume }}>
-          <div className="intraday-volume-unit">成交量单位：股</div>
-          {renderAuctionOverlay()}
           <div
             className="intraday-volume-surface"
             ref={volumeChartRef}

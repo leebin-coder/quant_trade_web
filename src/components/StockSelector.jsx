@@ -203,6 +203,17 @@ function StockSelector({ onStockSelect }) {
     }
   }, [activeSection])
 
+  useEffect(() => {
+    if (selectedStockCode) return
+    if (!favoriteList.length) return
+    const firstFavorite = favoriteList[0]
+    if (!firstFavorite?.stockCode) return
+    setSelectedStockCode(firstFavorite.stockCode)
+    if (typeof onStockSelect === 'function') {
+      onStockSelect(firstFavorite)
+    }
+  }, [favoriteList, selectedStockCode, onStockSelect])
+
   return (
     <div className={`stock-selector ${activeSection ? 'has-active-section' : ''}`}>
       {/* 顶部切换按钮 */}

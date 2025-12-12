@@ -35,7 +35,7 @@ function Quotes() {
   const [companyDetail, setCompanyDetail] = useState(null) // 公司详情数据
   const [chartData, setChartData] = useState([])
   const [loading, setLoading] = useState(false)
-  const [period, setPeriod] = useState('daily') // 时间周期: minute-分时, daily-日线, weekly-周线, monthly-月线, quarterly-季线, yearly-年线
+  const [period, setPeriod] = useState('minute') // 默认展示分时图
   const [adjustFlag, setAdjustFlag] = useState(2) // 复权类型: 1-后复权, 2-前复权, 3-不复权 (默认前复权)
   const [chartHeight, setChartHeight] = useState(520)
   const [chartHeaderHeight, setChartHeaderHeight] = useState(0)
