@@ -29,7 +29,7 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
-  padding: var(--quotes-gutter) 0px 8px calc(var(--quotes-selector-width) + var(--quotes-gutter));
+  padding: var(--quotes-gutter) 2px 8px calc(var(--quotes-selector-width) + var(--quotes-gutter));
   box-sizing: border-box;
   overflow: hidden;
   min-height: 0;
