@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useLayoutEffect, Fragment, useMemo } from 'react'
+import { useEffect, useRef, useState, useLayoutEffect, Fragment, useMemo, useCallback } from 'react'
 import { createChart } from 'lightweight-charts'
 import { Select, ConfigProvider, Checkbox, Radio, Popover, message, Tooltip } from 'antd'
 import { InfoCircleOutlined, EnvironmentOutlined, CopyOutlined, QuestionCircleOutlined, RightOutlined } from '@ant-design/icons'
@@ -86,6 +86,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
   const [indicators, setIndicators] = useState([]) // 选中的上方技术指标
   const [lowerIndicator, setLowerIndicator] = useState('KDJ') // 选中的下方技术指标,默认选中KDJ(单选)
   const [isLowerDropdownOpen, setIsLowerDropdownOpen] = useState(false)
+  const [intradayHoverTick, setIntradayHoverTick] = useState(null)
   const indicatorSeriesRefs = useRef({}) // 存储上方技术指标系列的引用
   const lowerIndicatorSeriesRefs = useRef({}) // 存储下方技术指标系列的引用
   const chartHeaderRef = useRef(null)
@@ -1130,8 +1131,71 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     }
   }
 
+  const normalizeDateLabel = (value) => {
+    if (!value) return ''
+    if (value instanceof Date) {
+      if (Number.isNaN(value.getTime())) return ''
+      const yyyy = value.getFullYear()
+      const mm = String(value.getMonth() + 1).padStart(2, '0')
+      const dd = String(value.getDate()).padStart(2, '0')
+      return `${yyyy}-${mm}-${dd}`
+    }
+    const text = String(value).trim()
+    if (!text) return ''
+    if (text.includes('-')) {
+      return text.split(' ')[0]
+    }
+    if (text.length === 8) {
+      return `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6, 8)}`
+    }
+    return text
+  }
+
+  const normalizeTimeLabel = (value) => {
+    if (!value && value !== 0) return ''
+    const text = String(value).trim()
+    if (!text) return ''
+    if (text.includes(':')) return text
+    if (text.length >= 6) {
+      return `${text.slice(0, 2)}:${text.slice(2, 4)}:${text.slice(4, 6)}`
+    }
+    return text
+  }
+
+  const resolveNumericValue = (source, keys) => {
+    if (!source) return null
+    for (const key of keys) {
+      const raw = source[key]
+      if (raw === 0 || raw) {
+        const num = Number(raw)
+        if (!Number.isNaN(num)) {
+          return num
+        }
+      }
+    }
+    return null
+  }
+
+  const resolveIntradayPrice = (payload) => resolveNumericValue(payload, ['price', 'trade', 'close', 'last'])
+  const resolveIntradayOpen = (payload) => resolveNumericValue(payload, ['open', 'openPrice', 'open_price', 'start', 'first'])
+  const resolveIntradayHigh = (payload) => resolveNumericValue(payload, ['high', 'highPrice', 'high_price', 'max'])
+  const resolveIntradayLow = (payload) => resolveNumericValue(payload, ['low', 'lowPrice', 'low_price', 'min'])
+  const resolveIntradayPreClose = (payload) => resolveNumericValue(payload, ['preClose', 'pre_close', 'preclose', 'preClosePrice', 'prevClose', 'previousClose', 'pre_close_price'])
+  const resolveIntradayVolume = (payload) => resolveNumericValue(payload, ['vol', 'volume', 'traded_volume'])
+  const resolveIntradayAmount = (payload) => resolveNumericValue(payload, ['amount', 'amt', 'turnover', 'total_turnover'])
+
+  const buildIntradayMomentParts = (tick) => {
+    if (!tick) return { date: '', time: '' }
+    const datePart = normalizeDateLabel(tick?.date || tick?.trade_date || tick?.trading_date)
+    const timePart = normalizeTimeLabel(tick?.time || tick?.trade_time)
+    return {
+      date: datePart || '',
+      time: timePart ? timePart.slice(0, 5) : '',
+    }
+  }
+
   const displayData = getDisplayData()
-  const shouldRenderBoardData = Boolean(displayData)
+  const shouldRenderBoardData = !isIntradayMode && Boolean(displayData)
   const formatHands = (value) => {
     if (value === null || value === undefined) return '--'
     const num = Number(value)
@@ -1142,6 +1206,102 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
     }
     return `${Math.round(hands)}手`
   }
+
+  const formatAmountInBillions = (value) => {
+    if (value === null || value === undefined) return '--'
+    const num = Number(value)
+    if (!Number.isFinite(num)) return '--'
+    return `${(num / 100000000).toFixed(2)}亿`
+  }
+
+  const getTrendColor = (value, baseline) => {
+    if (value === null || value === undefined) return '#ffffff'
+    if (baseline === null || baseline === undefined) return '#ffffff'
+    if (value > baseline) return '#ef232a'
+    if (value < baseline) return '#14b143'
+    return '#ffffff'
+  }
+
+  const handleIntradayHoverTickChange = useCallback((tick) => {
+    setIntradayHoverTick(tick || null)
+  }, [])
+
+  const renderInlineMetric = (label, text, { color = '#ffffff', large = false, showLabel = label !== null && label !== undefined, fontSize } = {}) => (
+    <div
+      key={`${label}-${text}`}
+      style={{
+        display: 'flex',
+        alignItems: 'flex-end',
+        gap: showLabel ? '4px' : '0px',
+        flexShrink: 0,
+        lineHeight: 1,
+      }}
+    >
+      {showLabel && (
+        <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>{label}</span>
+      )}
+      <span
+        style={{
+          color,
+          fontWeight: large ? 700 : 500,
+          fontSize: large ? '24px' : fontSize || '12px',
+        }}
+      >
+        {text ?? '--'}
+      </span>
+    </div>
+  )
+
+  const latestIntradayTick = useMemo(() => {
+    if (!Array.isArray(intradayTicks) || !intradayTicks.length) return null
+    const reversed = [...intradayTicks].reverse()
+    const latestValid = reversed.find((tick) => resolveIntradayPrice(tick) !== null || resolveIntradayVolume(tick) !== null)
+    return latestValid || intradayTicks[intradayTicks.length - 1]
+  }, [intradayTicks])
+
+  const activeIntradayTick = intradayHoverTick || latestIntradayTick
+
+  const intradayHeaderData = useMemo(() => {
+    if (!isIntradayMode) return null
+    const tick = activeIntradayTick
+    if (!tick) return null
+    const price = resolveIntradayPrice(tick)
+    const open = resolveIntradayOpen(tick)
+    const high = resolveIntradayHigh(tick)
+    const low = resolveIntradayLow(tick)
+    const volume = resolveIntradayVolume(tick)
+    const rawAmount = resolveIntradayAmount(tick)
+    const previousClose = resolveIntradayPreClose(tick) ?? resolveIntradayPreClose(stockInfo)
+    const { date, time } = buildIntradayMomentParts(tick)
+    let changePercent = null
+    let changeAmount = null
+    if (price !== null && previousClose !== null) {
+      if (previousClose !== 0) {
+        const result = calculateChange(price, previousClose)
+        changePercent = result.changePercent
+        changeAmount = result.changeAmount
+      } else {
+        changeAmount = price - previousClose
+      }
+    }
+    let amount = rawAmount
+    if ((amount === null || amount === undefined) && volume !== null && price !== null) {
+      amount = volume * price
+    }
+    return {
+      price,
+      open,
+      high,
+      low,
+      volume,
+      amount,
+      previousClose,
+      date,
+      time,
+      changePercent,
+      changeAmount,
+    }
+  }, [activeIntradayTick, isIntradayMode, stockInfo])
 
   // 获取下方指标的当前数据
   const getLowerIndicatorData = () => {
@@ -1506,6 +1666,16 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
 
   useEffect(() => {
   }, [height, measuredHeaderHeight])
+
+  useEffect(() => {
+    if (!isIntradayMode) {
+      setIntradayHoverTick(null)
+    }
+  }, [isIntradayMode])
+
+  useEffect(() => {
+    setIntradayHoverTick(null)
+  }, [stockInfo?.stockCode])
 
   const containerHeight = typeof height === 'number' ? `${Math.max(height, 0)}px` : '100%'
   const bodyHeight = typeof height === 'number'
@@ -2070,13 +2240,112 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                 )}
               </div>
 
-              {/* 横向展示K线数据 */}
-              {displayData && (
+              {/* 分时/日线数据展示 */}
+              {isIntradayMode && intradayHeaderData ? (
+                <div
+                  className="stock-data-display intraday-inline"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    gap: '12px',
+                    fontSize: '12px',
+                    flex: 1,
+                    minWidth: '900px',
+                    overflowX: 'auto',
+                    overflowY: 'hidden',
+                    paddingBottom: '4px',
+                  }}
+                >
+                  {renderInlineMetric(
+                    null,
+                    intradayHeaderData.price !== null && intradayHeaderData.price !== undefined
+                      ? intradayHeaderData.price.toFixed(2)
+                      : '--',
+                    { color: getTrendColor(intradayHeaderData.price, intradayHeaderData.previousClose), large: true, showLabel: false },
+                  )}
+                  {renderInlineMetric(null, intradayHeaderData.date || '--', { color: '#ffffff', showLabel: false })}
+                  {renderInlineMetric(
+                    '开',
+                    intradayHeaderData.open !== null && intradayHeaderData.open !== undefined
+                      ? intradayHeaderData.open.toFixed(2)
+                      : '--',
+                    { color: getTrendColor(intradayHeaderData.open, intradayHeaderData.previousClose), fontSize: '11px' },
+                  )}
+                  {renderInlineMetric(
+                    '高',
+                    intradayHeaderData.high !== null && intradayHeaderData.high !== undefined
+                      ? intradayHeaderData.high.toFixed(2)
+                      : '--',
+                    { color: getTrendColor(intradayHeaderData.high, intradayHeaderData.previousClose) },
+                  )}
+                  {renderInlineMetric(
+                    '低',
+                    intradayHeaderData.low !== null && intradayHeaderData.low !== undefined
+                      ? intradayHeaderData.low.toFixed(2)
+                      : '--',
+                    { color: getTrendColor(intradayHeaderData.low, intradayHeaderData.previousClose) },
+                  )}
+                  {renderInlineMetric(
+                    '量',
+                    intradayHeaderData.volume !== null && intradayHeaderData.volume !== undefined
+                      ? formatHands(intradayHeaderData.volume)
+                      : '--',
+                    {
+                      color:
+                        intradayHeaderData.price !== null && intradayHeaderData.previousClose !== null
+                          ? getTrendColor(intradayHeaderData.price, intradayHeaderData.previousClose)
+                          : '#ffffff',
+                    },
+                  )}
+                  {renderInlineMetric(
+                    '额',
+                    intradayHeaderData.amount !== null && intradayHeaderData.amount !== undefined
+                      ? formatAmountInBillions(intradayHeaderData.amount)
+                      : '--',
+                    {
+                      color:
+                        intradayHeaderData.price !== null && intradayHeaderData.previousClose !== null
+                          ? getTrendColor(intradayHeaderData.price, intradayHeaderData.previousClose)
+                          : '#ffffff',
+                    },
+                  )}
+                  {renderInlineMetric(
+                    '涨幅',
+                    intradayHeaderData.changePercent !== null && intradayHeaderData.changePercent !== undefined
+                      ? `${intradayHeaderData.changePercent > 0 ? '+' : ''}${intradayHeaderData.changePercent.toFixed(2)}%`
+                      : '--',
+                    {
+                      color:
+                        intradayHeaderData.changePercent > 0
+                          ? '#ef232a'
+                          : intradayHeaderData.changePercent < 0
+                          ? '#14b143'
+                          : '#8c8c8c',
+                    },
+                  )}
+                  {renderInlineMetric(
+                    '涨跌',
+                    intradayHeaderData.changeAmount !== null && intradayHeaderData.changeAmount !== undefined
+                      ? `${intradayHeaderData.changeAmount > 0 ? '+' : ''}${intradayHeaderData.changeAmount.toFixed(2)}`
+                      : '--',
+                    {
+                      color:
+                        intradayHeaderData.changeAmount > 0
+                          ? '#ef232a'
+                          : intradayHeaderData.changeAmount < 0
+                          ? '#14b143'
+                          : '#8c8c8c',
+                    },
+                  )}
+                </div>
+              ) : null}
+
+              {!isIntradayMode && displayData && (
                 <div
                   className="stock-data-display"
                   style={{
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-end',
                     gap: '12px',
                     fontSize: '12px',
                     flex: 1,
@@ -2086,118 +2355,77 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                     paddingBottom: '4px'
                   }}
                 >
-                  {/* 日期 */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexShrink: 0 }}>
-                    <span style={{ color: 'rgba(255, 255, 255, 0.95)', fontWeight: '600', fontSize: '13px' }}>{displayData.time}</span>
-                  </div>
-
-                  {/* 开盘 */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
-                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>开</span>
-                    <span style={{
-                      color: displayData.previousClose
-                        ? displayData.open > displayData.previousClose ? '#ef232a'
-                        : displayData.open < displayData.previousClose ? '#14b143'
-                        : '#ffffff'
-                        : '#ffffff',
-                      fontWeight: '500',
-                      fontSize: '12px'
-                    }}>{displayData.open.toFixed(2)}</span>
-                  </div>
-
-                  {/* 收盘 */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
-                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>收</span>
-                    <span style={{
-                      color: displayData.previousClose
-                        ? displayData.close > displayData.previousClose ? '#ef232a'
-                        : displayData.close < displayData.previousClose ? '#14b143'
-                        : '#ffffff'
-                        : '#ffffff',
-                      fontWeight: '500',
-                      fontSize: '12px'
-                    }}>{displayData.close.toFixed(2)}</span>
-                  </div>
-
-                  {/* 最高 */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
-                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>高</span>
-                    <span style={{
-                      color: displayData.previousClose
-                        ? displayData.high > displayData.previousClose ? '#ef232a'
-                        : displayData.high < displayData.previousClose ? '#14b143'
-                        : '#ffffff'
-                        : '#ffffff',
-                      fontWeight: '500',
-                      fontSize: '12px'
-                    }}>{displayData.high.toFixed(2)}</span>
-                  </div>
-
-                  {/* 最低 */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
-                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>低</span>
-                    <span style={{
-                      color: displayData.previousClose
-                        ? displayData.low > displayData.previousClose ? '#ef232a'
-                        : displayData.low < displayData.previousClose ? '#14b143'
-                        : '#ffffff'
-                        : '#ffffff',
-                      fontWeight: '500',
-                      fontSize: '12px'
-                    }}>{displayData.low.toFixed(2)}</span>
-                  </div>
-
-                  {/* 涨幅 */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
-                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>涨幅</span>
-                    <span style={{
-                      color: displayData.changePercent > 0 ? '#ef232a'
-                        : displayData.changePercent < 0 ? '#14b143'
-                        : '#666',
-                      fontWeight: '600',
-                      fontSize: '12px'
-                    }}>
-                      {displayData.changePercent > 0 ? '+' : ''}{displayData.changePercent.toFixed(2)}%
-                    </span>
-                  </div>
-
-                  {/* 涨幅金额 */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
-                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>涨跌</span>
-                    <span style={{
-                      color: displayData.changeAmount > 0 ? '#ef232a'
-                        : displayData.changeAmount < 0 ? '#14b143'
-                        : '#666',
-                      fontWeight: '500',
-                      fontSize: '12px'
-                    }}>
-                      {displayData.changeAmount > 0 ? '+' : ''}{displayData.changeAmount.toFixed(2)}
-                    </span>
-                  </div>
-
-                  {/* 成交量 */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
-                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>量</span>
-                    <span style={{
-                      color: displayData.close > displayData.open ? '#ef232a'
-                        : displayData.close < displayData.open ? '#14b143'
-                        : '#ffffff',
-                      fontWeight: '500',
-                      fontSize: '12px'
-                    }}>{formatHands(displayData.volume)}</span>
-                  </div>
-
-                  {/* 成交额 */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexShrink: 0 }}>
-                    <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '10px' }}>额</span>
-                    <span style={{
-                      color: displayData.close > displayData.open ? '#ef232a'
-                        : displayData.close < displayData.open ? '#14b143'
-                        : '#ffffff',
-                      fontWeight: '500',
-                      fontSize: '12px'
-                    }}>{(displayData.volume * displayData.close / 100000000).toFixed(2)}亿</span>
-                  </div>
+                  {renderInlineMetric(
+                    null,
+                    displayData.close !== undefined && displayData.close !== null
+                      ? displayData.close.toFixed(2)
+                      : '--',
+                    {
+                      color: getTrendColor(displayData.close, displayData.previousClose),
+                      large: true,
+                      showLabel: false,
+                    },
+                  )}
+                  {renderInlineMetric(null, displayData.time, { color: '#ffffff', showLabel: false })}
+                  {renderInlineMetric(
+                    '开',
+                    displayData.open !== undefined && displayData.open !== null ? displayData.open.toFixed(2) : '--',
+                    { color: getTrendColor(displayData.open, displayData.previousClose), fontSize: '11px' },
+                  )}
+                  {renderInlineMetric(
+                    '高',
+                    displayData.high !== undefined && displayData.high !== null ? displayData.high.toFixed(2) : '--',
+                    { color: getTrendColor(displayData.high, displayData.previousClose) },
+                  )}
+                  {renderInlineMetric(
+                    '低',
+                    displayData.low !== undefined && displayData.low !== null ? displayData.low.toFixed(2) : '--',
+                    { color: getTrendColor(displayData.low, displayData.previousClose) },
+                  )}
+                  {renderInlineMetric(
+                    '涨幅',
+                    displayData.changePercent !== undefined && displayData.changePercent !== null
+                      ? `${displayData.changePercent > 0 ? '+' : ''}${displayData.changePercent.toFixed(2)}%`
+                      : '--',
+                    {
+                      color:
+                        displayData.changePercent > 0 ? '#ef232a' : displayData.changePercent < 0 ? '#14b143' : '#666',
+                    },
+                  )}
+                  {renderInlineMetric(
+                    '涨跌',
+                    displayData.changeAmount !== undefined && displayData.changeAmount !== null
+                      ? `${displayData.changeAmount > 0 ? '+' : ''}${displayData.changeAmount.toFixed(2)}`
+                      : '--',
+                    {
+                      color:
+                        displayData.changeAmount > 0 ? '#ef232a' : displayData.changeAmount < 0 ? '#14b143' : '#666',
+                    },
+                  )}
+                  {renderInlineMetric(
+                    '量',
+                    formatHands(displayData.volume),
+                    {
+                      color:
+                        displayData.close > displayData.open
+                          ? '#ef232a'
+                          : displayData.close < displayData.open
+                          ? '#14b143'
+                          : '#ffffff',
+                    },
+                  )}
+                  {renderInlineMetric(
+                    '额',
+                    formatAmountInBillions(displayData.volume * displayData.close),
+                    {
+                      color:
+                        displayData.close > displayData.open
+                          ? '#ef232a'
+                          : displayData.close < displayData.open
+                          ? '#14b143'
+                          : '#ffffff',
+                    },
+                  )}
 
                   {/* 技术指标数据 */}
                   {lowerIndicator && (() => {
@@ -3054,6 +3282,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                 height={intradayChartHeight}
                 stockInfo={stockInfo}
                 statusLabel={intradayStatusLabel || INTRADAY_STATUS_TEXT[intradayStatus] || ''}
+                onHoverTickChange={handleIntradayHoverTickChange}
               />
             </div>
           )}
@@ -3095,7 +3324,45 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: rpGap.double }}>
                   {[
                     { label: '开盘价', value: displayData?.open, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
-                    { label: '收盘价', value: displayData?.close, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
+                  ].map((item) => (
+                    <div key={item.label}>
+                      <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>{item.label}</div>
+                      <div
+                        style={{
+                          fontSize: rpFont.value,
+                          fontWeight: '500',
+                          color: item.value !== undefined && item.value !== null && item.compare
+                            ? item.value > item.compare
+                              ? item.positiveColor
+                              : item.value < item.compare
+                              ? item.negativeColor
+                              : '#ffffff'
+                            : '#ffffff',
+                        }}
+                      >
+                        {item.value !== undefined && item.value !== null ? item.value.toFixed(2) : '--'}
+                      </div>
+                    </div>
+                  ))}
+                  <div key="daily-close">
+                    <div style={{ fontSize: rpFont.label, color: '#999', marginBottom: rpSpace.tiny }}>收盘价</div>
+                    <div
+                      style={{
+                        fontSize: rpFont.value,
+                        fontWeight: '700',
+                        color: displayData?.close !== undefined && displayData?.close !== null && displayData?.previousClose
+                          ? displayData.close > displayData.previousClose
+                            ? '#ef232a'
+                            : displayData.close < displayData.previousClose
+                            ? '#14b143'
+                            : '#ffffff'
+                          : '#ffffff',
+                      }}
+                    >
+                      {displayData?.close !== undefined && displayData?.close !== null ? displayData.close.toFixed(2) : '--'}
+                    </div>
+                  </div>
+                  {[
                     { label: '最高', value: displayData?.high, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
                     { label: '最低', value: displayData?.low, compare: displayData?.previousClose, positiveColor: '#ef232a', negativeColor: '#14b143' },
                   ].map((item) => (

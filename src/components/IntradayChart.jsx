@@ -71,6 +71,7 @@ const CROSSHAIR_LABEL_COLOR = '#ffd666'
 const PRICE_MULTIPLIER = 100
 const RIGHT_PADDING_RATIO = 0.11
 const MIN_RIGHT_PADDING = 200
+const AXIS_WIDTH = 68
 
 const getTickDate = (tick) => tick?.date || tick?.trade_date || tick?.trading_date || null
 
@@ -300,14 +301,6 @@ const resolvePointLow = (point, fallback) => {
   return fallback ?? null
 }
 
-const SCALE_LABEL_WIDTH = 10
-
-const padScaleLabel = (label) => {
-  const text = typeof label === 'string' ? label : String(label ?? '--')
-  if (text.length >= SCALE_LABEL_WIDTH) return text
-  return text.padStart(SCALE_LABEL_WIDTH, ' ')
-}
-
 const formatPriceValue = (scaledValue) => {
   if (scaledValue === null || scaledValue === undefined) return '--'
   const num = Number(scaledValue) / PRICE_MULTIPLIER
@@ -388,21 +381,36 @@ const buildVolumeSeriesData = (ticks) => {
 }
 
 const formatVolumeLabel = (value) => {
-  if (value === null || value === undefined) return padScaleLabel('--')
+  if (value === null || value === undefined) return '--'
   const num = Number(value)
-  if (!Number.isFinite(num)) return padScaleLabel('--')
+  if (!Number.isFinite(num)) return '--'
   const abs = Math.abs(num)
-  let label
   if (abs >= 100000000) {
-    label = `${(num / 100000000).toFixed(2)}亿`
-  } else if (abs >= 10000) {
-    label = `${(num / 10000).toFixed(2)}万`
-  } else {
-    label = `${Math.round(num)}`
+    return `${(num / 100000000).toFixed(2)}亿`
   }
-  return padScaleLabel(label)
+  if (abs >= 10000) {
+    return `${(num / 10000).toFixed(2)}万`
+  }
+  return `${Math.round(num)}`
 }
-function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
+
+const axisLabelTransform = (position) => {
+  if (position <= 0.05) return 'translateY(0%)'
+  if (position >= 0.95) return 'translateY(-100%)'
+  return 'translateY(-50%)'
+}
+
+const buildAxisTicks = (min, max, count = 5) => {
+  if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return []
+  const steps = Math.max(2, count)
+  const interval = (max - min) / (steps - 1)
+  return Array.from({ length: steps }).map((_, index) => {
+    const value = min + interval * index
+    const ratio = steps === 1 ? 0.5 : 1 - (index / (steps - 1))
+    return { value, position: ratio }
+  })
+}
+function IntradayChart({ data = [], height = 520, stockInfo, statusLabel, onHoverTickChange }) {
   const mainChartRef = useRef(null)
   const volumeChartRef = useRef(null)
   const mainChartInstanceRef = useRef(null)
@@ -422,6 +430,9 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
   const [blinkPhase, setBlinkPhase] = useState(false)
   const lastTickCountRef = useRef(0)
   const lastVirtualRangeRef = useRef(null)
+  const normalizedTicksRef = useRef([])
+  const normalizedTickMapRef = useRef(new Map())
+  const hoverCallbackRef = useRef(onHoverTickChange)
 
   const heights = useMemo(() => {
     const minSecondary = 80
@@ -473,6 +484,61 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
 
   const normalizedResult = useMemo(() => normalizeTicksForSessions(data, fallbackDate), [data, fallbackDate])
   const normalizedTicks = normalizedResult.points
+  useEffect(() => {
+    hoverCallbackRef.current = onHoverTickChange
+  }, [onHoverTickChange])
+  useEffect(() => {
+    normalizedTicksRef.current = normalizedTicks
+    const lookup = new Map()
+    normalizedTicks.forEach((tick) => {
+      const vt = Number(tick?.virtualTime)
+      if (Number.isFinite(vt)) {
+        lookup.set(Math.round(vt), tick)
+      }
+    })
+    normalizedTickMapRef.current = lookup
+  }, [normalizedTicks])
+  const extractCrosshairTime = (timeValue) => {
+    if (timeValue === null || timeValue === undefined) return null
+    if (typeof timeValue === 'object') {
+      if (Number.isFinite(timeValue.timestamp)) {
+        return Number(timeValue.timestamp)
+      }
+      if (Number.isFinite(timeValue.time)) {
+        return Number(timeValue.time)
+      }
+      if (Number.isFinite(timeValue.seconds)) {
+        return Number(timeValue.seconds)
+      }
+      if (Number.isFinite(timeValue.year) && Number.isFinite(timeValue.month) && Number.isFinite(timeValue.day)) {
+        const date = new Date(timeValue.year, (timeValue.month || 1) - 1, timeValue.day || 1)
+        const stamp = Math.floor(date.getTime() / 1000)
+        return Number.isFinite(stamp) ? stamp : null
+      }
+      return null
+    }
+    const numeric = Number(timeValue)
+    return Number.isFinite(numeric) ? numeric : null
+  }
+  const getHoverTickForTime = (targetTime) => {
+    if (!Number.isFinite(targetTime)) return null
+    const rounded = Math.round(targetTime)
+    const exact = normalizedTickMapRef.current.get(rounded)
+    if (exact) return exact
+    const ticks = normalizedTicksRef.current
+    for (let i = ticks.length - 1; i >= 0; i -= 1) {
+      const candidateTime = Number(ticks[i]?.virtualTime)
+      if (!Number.isFinite(candidateTime)) {
+        continue
+      }
+      if (candidateTime <= targetTime) {
+        return ticks[i]
+      }
+    }
+    return null
+  }
+  const lineSeriesData = useMemo(() => buildLineSeriesData(normalizedTicks), [normalizedTicks])
+  const volumeSeriesData = useMemo(() => buildVolumeSeriesData(normalizedTicks), [normalizedTicks])
   const hasLineData = useMemo(() => {
     return normalizedTicks.some((tick) => {
       const price = resolvePrice(tick)
@@ -540,7 +606,45 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel }) {
   const lastPoint = normalizedTicks.length ? normalizedTicks[normalizedTicks.length - 1] : null
   const lastHigh = resolvePointHigh(lastPoint, basePrice ?? null)
   const lastLow = resolvePointLow(lastPoint, basePrice ?? null)
-
+  const priceAxisRange = useMemo(() => {
+    const reference = basePrice && Number.isFinite(basePrice) && basePrice > 0 ? basePrice : null
+    if (!reference) return null
+    const buffer = Math.max(reference * 0.001, 0.01)
+    const highBase = lastHigh ?? reference
+    const lowBase = lastLow ?? reference
+    return {
+      min: Math.max(lowBase - buffer, 0.01),
+      max: highBase + buffer,
+    }
+  }, [basePrice, lastHigh, lastLow])
+  const volumeAxisRange = useMemo(() => {
+    if (!volumeSeriesData.length) return null
+    const max = volumeSeriesData.reduce((acc, item) => Math.max(acc, Number(item.value) || 0), 0)
+    return {
+      min: 0,
+      max: Math.max(max, 1),
+    }
+  }, [volumeSeriesData])
+  const priceAxisTicks = useMemo(() => {
+    if (!priceAxisRange) return []
+    const ticks = buildAxisTicks(priceAxisRange.min, priceAxisRange.max, 6)
+    return ticks.map((tick, index) => ({
+      key: `price-${index}`,
+      label: formatPriceValue(Math.round(tick.value * PRICE_MULTIPLIER)),
+      position: tick.position,
+    }))
+  }, [priceAxisRange])
+  const volumeAxisTicks = useMemo(() => {
+    if (!volumeAxisRange) return []
+    const ticks = buildAxisTicks(volumeAxisRange.min, volumeAxisRange.max, 5)
+    return ticks.map((tick, index) => ({
+      key: `volume-${index}`,
+      label: formatVolumeLabel(tick.value),
+      position: tick.position,
+    }))
+  }, [volumeAxisRange])
+  const priceAxisLabels = priceAxisTicks.length ? priceAxisTicks : [{ key: 'price-fallback', label: '--', position: 0.5 }]
+  const volumeAxisLabels = volumeAxisTicks.length ? volumeAxisTicks : [{ key: 'volume-fallback', label: '--', position: 0.5 }]
   useEffect(() => {
     timeLabelRef.current = normalizedResult.labels
     if (!normalizedResult.points.length) {
@@ -724,6 +828,7 @@ const ensureScaleSync = () => {
         },
       },
       rightPriceScale: {
+        visible: false,
         borderVisible: false,
         autoScale: false,
       },
@@ -802,8 +907,12 @@ const ensureScaleSync = () => {
     const handleCrosshairMove = (param) => {
       if (!param || !param.point || param.point.x < 0 || param.point.y < 0) {
         hideCrosshairPriceLine()
+        hoverCallbackRef.current?.(null)
         return
       }
+      const hoverTime = extractCrosshairTime(param.time)
+      const hoveredTick = hoverTime !== null ? getHoverTickForTime(hoverTime) : null
+      hoverCallbackRef.current?.(hoveredTick || null)
       const priceMap = param.seriesPrices
       let price = priceMap && mainSeriesRef.current ? priceMap.get(mainSeriesRef.current) : undefined
       if ((price === undefined || price === null) && param?.seriesData && mainSeriesRef.current) {
@@ -867,11 +976,8 @@ const ensureScaleSync = () => {
         horzLines: { color: 'rgba(255,255,255,0.04)' },
       },
       rightPriceScale: {
+        visible: false,
         borderVisible: false,
-        scaleMargins: {
-          top: 0.08,
-          bottom: 0.05,
-        },
       },
       timeScale: {
         borderVisible: false,
@@ -996,18 +1102,16 @@ const ensureScaleSync = () => {
   }, [sessionWindows, virtualRange, paddedRange, basePrice])
 
   useEffect(() => {
-    const lineData = buildLineSeriesData(normalizedTicks)
     if (mainSeriesRef.current) {
-      mainSeriesRef.current.setData(lineData)
-      if (!lineData.length) {
+      mainSeriesRef.current.setData(lineSeriesData)
+      if (!lineSeriesData.length) {
         mainSeriesRef.current.setMarkers([])
       }
     }
-    const volumeData = buildVolumeSeriesData(normalizedTicks)
     if (volumeSeriesRef.current) {
-      volumeSeriesRef.current.setData(volumeData)
+      volumeSeriesRef.current.setData(volumeSeriesData)
     }
-  }, [normalizedTicks])
+  }, [lineSeriesData, volumeSeriesData])
 
   useEffect(() => {
     skeletonDataRef.current = skeletonData
@@ -1054,21 +1158,8 @@ const ensureScaleSync = () => {
     series.applyOptions({
       autoscaleInfoProvider: provider,
     })
-    chart.priceScale('right').applyOptions({
-      visible: true,
-      borderVisible: false,
-      ticksVisible: true,
-      entireTextOnly: false,
-      alignLabels: true,
-      autoScale: false,
-      scaleMargins: {
-        top: 0.12,
-        bottom: 0.12,
-      },
-    })
     return () => {
       series.applyOptions({ autoscaleInfoProvider: undefined })
-      chart.priceScale('right').applyOptions({ autoScale: true })
     }
   }, [basePrice, lastHigh, lastLow])
 
@@ -1128,6 +1219,7 @@ const ensureScaleSync = () => {
   const handleMouseLeave = () => {
     hoverStateRef.current = false
     hideCrosshairPriceLine()
+    hoverCallbackRef.current?.(null)
   }
 
 
@@ -1143,22 +1235,69 @@ const ensureScaleSync = () => {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <div
-          className="intraday-main-chart"
-          style={{ height: heights.main }}
-        >
-          <div
-            className="intraday-chart-surface"
-            ref={mainChartRef}
-            style={{ height: heights.main }}
-          />
+        <div className="intraday-main-chart" style={{ height: heights.main }}>
+          <div className="intraday-chart-row">
+            <div
+              className="intraday-plot-surface"
+              style={{ width: `calc(100% - ${AXIS_WIDTH}px)` }}
+            >
+              <div
+                className="intraday-chart-surface"
+                ref={mainChartRef}
+                style={{ height: heights.main }}
+              />
+            </div>
+            <div
+              className="intraday-axis-overlay"
+              style={{ width: AXIS_WIDTH, height: heights.main }}
+            >
+              <div className="intraday-axis-line" />
+              {priceAxisLabels.map((tick) => (
+                <div
+                  key={tick.key}
+                  className="intraday-axis-tick"
+                  style={{
+                    top: `${tick.position * 100}%`,
+                    transform: axisLabelTransform(tick.position),
+                  }}
+                >
+                  <span>{tick.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="intraday-volume-chart" style={{ height: heights.volume }}>
-          <div
-            className="intraday-volume-surface"
-            ref={volumeChartRef}
-            style={{ height: heights.volume }}
-          />
+          <div className="intraday-chart-row">
+            <div
+              className="intraday-plot-surface"
+              style={{ width: `calc(100% - ${AXIS_WIDTH}px)` }}
+            >
+              <div
+                className="intraday-volume-surface"
+                ref={volumeChartRef}
+                style={{ height: heights.volume }}
+              />
+            </div>
+            <div
+              className="intraday-axis-overlay"
+              style={{ width: AXIS_WIDTH, height: heights.volume }}
+            >
+              <div className="intraday-axis-line" />
+              {volumeAxisLabels.map((tick) => (
+                <div
+                  key={tick.key}
+                  className="intraday-axis-tick"
+                  style={{
+                    top: `${tick.position * 100}%`,
+                    transform: axisLabelTransform(tick.position),
+                  }}
+                >
+                  <span>{tick.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
         <div
           className="intraday-secondary-panel"
