@@ -1,7 +1,10 @@
 .quotes-container {
+  --quotes-gutter: clamp(10px, 1.4vw, 16px);
+  --quotes-selector-width: 240px;
   position: relative;
   width: 100%;
-  height: 100%;
+  height: 100vh;
+  max-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: rgb(8, 8, 8);
@@ -12,6 +15,8 @@
 /* 模块内容区域 */
 .module-content {
   flex: 1;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -24,22 +29,27 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
+  padding: var(--quotes-gutter) 0px 8px calc(var(--quotes-selector-width) + var(--quotes-gutter));
+  box-sizing: border-box;
+  overflow: hidden;
+  min-height: 0;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Tab Bar 容器 */
 .quotes-tabs-wrapper {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 100;
   background: rgb(8, 8, 8);
-  margin: 0 8px 0 256px; /* 为左侧股票选择器留出空间 (8px左边距 + 240px宽度 + 8px间距) */
+  margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   flex: 1;
+  height: 100%;
   min-height: 0;
-  overflow: visible; /* 确保tab内容不被裁剪 */
+  overflow: hidden;
+  overscroll-behavior: contain;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -120,6 +130,9 @@
 /* Tab内容容器 */
 .tab-content-container {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
   background: rgb(8, 8, 8);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -128,6 +141,10 @@
 /* Tab面板 */
 .tab-pane {
   height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -136,7 +153,7 @@
 }
 
 .tab-pane.active {
-  display: block;
+  display: flex;
   animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -165,11 +182,10 @@
 /* Tab 内容区域 */
 .tab-content {
   padding: 16px 6px 16px 16px;
-  height: calc(100% - 8px);
-  margin-bottom: 8px;
+  flex: 1;
+  min-height: 0;
   position: relative;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   box-sizing: border-box;
   background: rgb(28, 28, 28);
   border-radius: 4px;
@@ -191,11 +207,16 @@
 .trading-chart-wrapper {
   width: 100%;
   position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .trading-chart-content {
   width: 100%;
   height: 100%;
+  flex: 1;
   transition: opacity 0.4s ease;
 }
 
@@ -205,6 +226,12 @@
 
 .intraday-board-tabs .ant-tabs-tab {
   color: rgba(255, 255, 255, 0.65);
+  margin: 0 !important;
+  padding-bottom: 4px !important;
+}
+
+.intraday-board-tabs .ant-tabs-tab + .ant-tabs-tab {
+  margin-left: clamp(12px, 1.8vh, 18px) !important;
 }
 
 .intraday-board-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
@@ -212,49 +239,79 @@
   text-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
 }
 
+.intraday-board-tabs .ant-tabs-tab.ant-tabs-tab-active::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+}
+
+.intraday-board-tabs {
+  width: 100%;
+  height: 100%;
+}
+
+.intraday-board-tabs .ant-tabs-nav {
+  margin: 0 0 clamp(12px, 1.8vh, 18px) 0 !important;
+  padding: 0 !important;
+}
+
+.intraday-board-tabs .ant-tabs-content-holder,
+.intraday-board-tabs .ant-tabs-content,
+.intraday-board-tabs .ant-tabs-tabpane {
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 100%;
+}
+
 .board-placeholder {
   width: 100%;
-  min-height: 160px;
+  min-height: clamp(140px, 26vh, 220px);
   display: flex;
   align-items: center;
   justify-content: center;
   color: rgba(255, 255, 255, 0.5);
-  font-size: 13px;
+  font-size: clamp(12px, 1.4vh, 14px);
 }
 
 .five-level-board {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: clamp(4px, 0.8vh, 10px);
+  margin-top: clamp(10px, 1.6vh, 18px);
 }
 
 .orderbook-side {
   background: rgba(255, 255, 255, 0.02);
   border-radius: 10px;
-  padding: 12px;
+  padding: clamp(6px, 1.5vh, 12px);
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .side-title {
-  font-size: 13px;
+  font-size: clamp(11px, 1.4vh, 14px);
   color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 10px;
+  margin-bottom: clamp(10px, 1.6vh, 16px);
 }
 
 .orderbook-rows {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: clamp(4px, 0.8vh, 8px);
 }
 
 .orderbook-row {
   display: grid;
-  grid-template-columns: 56px 1fr 1fr;
-  font-size: 12px;
+  grid-template-columns: minmax(48px, 64px) 1fr 1fr;
+  font-size: clamp(11px, 1.5vh, 13px);
   color: rgba(255, 255, 255, 0.85);
   position: relative;
   align-items: center;
-  min-height: 26px;
+  min-height: clamp(22px, 2.2vh, 30px);
   overflow: hidden;
 }
 
@@ -274,8 +331,8 @@
 
 .orderbook-row-bar {
   position: absolute;
-  top: 4px;
-  bottom: 4px;
+  top: clamp(2px, 0.4vh, 4px);
+  bottom: clamp(2px, 0.4vh, 4px);
   right: 0;
   border-radius: 4px 0 0 4px;
   opacity: 0.35;
@@ -284,11 +341,11 @@
 }
 
 .orderbook-row-bar.sell {
-  background: linear-gradient(90deg, rgba(20, 177, 67, 0.35), rgba(20, 177, 67, 0.8));
+  background: linear-gradient(90deg, rgba(104, 197, 105, 0.35), rgba(104, 197, 105, 0.8));
 }
 
 .orderbook-row-bar.buy {
-  background: linear-gradient(90deg, rgba(239, 35, 42, 0.35), rgba(239, 35, 42, 0.85));
+  background: linear-gradient(90deg, rgba(235, 79, 62, 0.35), rgba(235, 79, 62, 0.85));
 }
 
 .orderbook-ratio {
@@ -296,23 +353,23 @@
   border-radius: 10px;
   border: 1px dashed rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.01);
-  padding: 12px 10px;
+  padding: clamp(8px, 1.2vh, 12px) clamp(6px, 1vh, 10px);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 8px;
+  gap: clamp(4px, 0.8vh, 8px);
 }
 
 .ratio-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: clamp(10px, 1.3vh, 12px);
   color: rgba(255, 255, 255, 0.75);
 }
 
 .ratio-bar {
   width: 100%;
-  height: 14px;
+  height: clamp(10px, 1.5vh, 16px);
   border-radius: 999px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.08);
@@ -320,17 +377,17 @@
 }
 
 .ratio-segment.sell {
-  background: rgba(20, 177, 67, 0.85);
+  background: rgba(104, 197, 105, 0.85);
 }
 
 .ratio-segment.buy {
-  background: rgba(239, 35, 42, 0.9);
+  background: rgba(235, 79, 62, 0.9);
 }
 
 .ratio-values {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: clamp(10px, 1.3vh, 12px);
   font-weight: 600;
 }
 
@@ -343,7 +400,7 @@
 
 /* 看板区域 - 固定300px高度 */
 .dashboard-area {
-  height: 300px;
+  height: clamp(220px, 32vh, 360px);
   flex-shrink: 0;
   width: 100%;
   background: rgb(20, 20, 20);
@@ -360,46 +417,10 @@
   height: 100%;
   padding: 20px;
   box-sizing: border-box;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 /* 看板滚动条样式 */
-.dashboard-content::-webkit-scrollbar {
-  width: 4px;
-}
-
-.dashboard-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.dashboard-content::-webkit-scrollbar-thumb {
-  background: rgba(136, 136, 136, 0.3);
-  border-radius: 2px;
-}
-
-.dashboard-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(136, 136, 136, 0.5);
-}
-
-/* 自定义滚动条样式 - 细的淡灰色 */
-.tab-content::-webkit-scrollbar {
-  width: 4px;
-}
-
-.tab-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.tab-content::-webkit-scrollbar-thumb {
-  background: rgba(136, 136, 136, 0.3);
-  border-radius: 2px;
-}
-
-.tab-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(136, 136, 136, 0.5);
-}
-
 .tab-content-placeholder {
   display: flex;
   align-items: center;

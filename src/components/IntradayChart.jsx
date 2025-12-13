@@ -67,8 +67,26 @@ const SESSION_SEGMENTS = [
   { start: '14:57:00', end: '15:00:00' },
 ]
 
-const CROSSHAIR_LABEL_COLOR = '#ffd666'
 const PRICE_MULTIPLIER = 100
+const COLOR_RED = 'rgb(235, 79, 62)'
+const COLOR_GREEN = 'rgb(104, 197, 105)'
+const COLOR_BLUE = 'rgb(120, 197, 245)'
+
+const toRgba = (color, alpha) => {
+  if (!color) return `rgba(255,255,255,${alpha})`
+  const match = color.match(/rgb\\((\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\)/i)
+  if (match) {
+    const [, r, g, b] = match
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+  if (color.startsWith('#') && color.length === 7) {
+    const r = parseInt(color.slice(1, 3), 16)
+    const g = parseInt(color.slice(3, 5), 16)
+    const b = parseInt(color.slice(5, 7), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+  return `rgba(255,255,255,${alpha})`
+}
 const RIGHT_PADDING_RATIO = 0.11
 const MIN_RIGHT_PADDING = 200
 const AXIS_WIDTH = 68
@@ -410,7 +428,7 @@ const buildAxisTicks = (min, max, count = 5) => {
     return { value, position: ratio }
   })
 }
-function IntradayChart({ data = [], height = 520, stockInfo, statusLabel, onHoverTickChange }) {
+function IntradayChart({ data = [], height = 520, stockInfo, statusLabel, intradayStatus = 'non_trading', onHoverTickChange }) {
   const mainChartRef = useRef(null)
   const volumeChartRef = useRef(null)
   const mainChartInstanceRef = useRef(null)
@@ -423,9 +441,9 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel, onHove
   const scaleSyncCleanupRef = useRef(null)
   const scaleSyncLockRef = useRef(false)
   const hasFitInitialDataRef = useRef(false)
-  const crosshairPriceLineRef = useRef(null)
   const lastInteractionRef = useRef(Date.now())
   const hoverStateRef = useRef(false)
+  const [isChartHovered, setIsChartHovered] = useState(false)
   const autoCenterLockRef = useRef(false)
   const [blinkPhase, setBlinkPhase] = useState(false)
   const lastTickCountRef = useRef(0)
@@ -433,6 +451,7 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel, onHove
   const normalizedTicksRef = useRef([])
   const normalizedTickMapRef = useRef(new Map())
   const hoverCallbackRef = useRef(onHoverTickChange)
+  const isTradingSession = intradayStatus === 'trading'
 
   const heights = useMemo(() => {
     const minSecondary = 80
@@ -498,6 +517,47 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel, onHove
     })
     normalizedTickMapRef.current = lookup
   }, [normalizedTicks])
+
+  const referencePreClose = useMemo(() => {
+    const firstTick = normalizedTicks.length ? normalizedTicks[0] : null
+    return resolvePreClose(firstTick) ?? resolvePreClose(stockInfo) ?? null
+  }, [normalizedTicks, stockInfo])
+
+  const latestPricePoint = useMemo(() => {
+    if (!normalizedTicks.length) return null
+    for (let i = normalizedTicks.length - 1; i >= 0; i -= 1) {
+      const price = resolvePrice(normalizedTicks[i])
+      if (price !== null && price !== undefined && Number.isFinite(price)) {
+        return normalizedTicks[i]
+      }
+    }
+    return null
+  }, [normalizedTicks])
+
+  const baseLineColor = useMemo(() => {
+    const price = resolvePrice(latestPricePoint)
+    if (price === null || price === undefined || !Number.isFinite(price)) {
+      return '#ffffff'
+    }
+    const prevClose = resolvePreClose(latestPricePoint) ?? referencePreClose
+    if (prevClose === null || prevClose === undefined || !Number.isFinite(prevClose)) {
+      return '#ffffff'
+    }
+    if (price > prevClose) return COLOR_RED
+    if (price < prevClose) return COLOR_GREEN
+    return '#ffffff'
+  }, [latestPricePoint, referencePreClose])
+
+  useEffect(() => {
+    const color = isChartHovered ? COLOR_BLUE : baseLineColor
+    if (mainSeriesRef.current) {
+      mainSeriesRef.current.applyOptions({
+        lineColor: color,
+        topColor: toRgba(color, 0.25),
+        bottomColor: toRgba(color, 0.05),
+      })
+    }
+  }, [isChartHovered, baseLineColor])
   const extractCrosshairTime = (timeValue) => {
     if (timeValue === null || timeValue === undefined) return null
     if (typeof timeValue === 'object') {
@@ -649,7 +709,6 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel, onHove
     timeLabelRef.current = normalizedResult.labels
     if (!normalizedResult.points.length) {
       hasFitInitialDataRef.current = false
-      hideCrosshairPriceLine()
     }
   }, [normalizedResult])
   useEffect(() => {
@@ -681,30 +740,6 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel, onHove
       }
     }
   }, [])
-
-  const ensureCrosshairPriceLine = () => {
-    if (!mainSeriesRef.current) return null
-    if (!crosshairPriceLineRef.current) {
-      crosshairPriceLineRef.current = mainSeriesRef.current.createPriceLine({
-        price: 0,
-        color: CROSSHAIR_LABEL_COLOR,
-        lineVisible: true,
-        axisLabelVisible: false,
-        lineWidth: 1,
-        lineStyle: LineStyle.Dashed,
-      })
-    }
-    return crosshairPriceLineRef.current
-  }
-
-  const hideCrosshairPriceLine = () => {
-    if (crosshairPriceLineRef.current) {
-      crosshairPriceLineRef.current.applyOptions({
-        axisLabelVisible: false,
-        lineVisible: false,
-      })
-    }
-  }
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -814,7 +849,7 @@ const ensureScaleSync = () => {
         horzLines: { color: 'rgba(255,255,255,0.04)' },
       },
       crosshair: {
-        mode: 0,
+        mode: 1,
         vertLine: {
           visible: true,
           labelVisible: true,
@@ -823,8 +858,11 @@ const ensureScaleSync = () => {
           width: 1,
         },
         horzLine: {
-          visible: false,
-          labelVisible: false,
+          visible: true,
+          labelVisible: true,
+          color: 'rgba(255, 255, 255, 0.35)',
+          style: LineStyle.Dashed,
+          width: 1,
         },
       },
       rightPriceScale: {
@@ -862,8 +900,10 @@ const ensureScaleSync = () => {
       height: heights.main,
       autoSize: true,
     })
-    const series = chart.addLineSeries({
-      color: '#4fc3f7',
+    const series = chart.addAreaSeries({
+      lineColor: COLOR_BLUE,
+      topColor: toRgba(COLOR_BLUE, 0.25),
+      bottomColor: toRgba(COLOR_BLUE, 0.05),
       lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: false,
@@ -903,10 +943,8 @@ const ensureScaleSync = () => {
       skeletonSeries.setData(skeletonDataRef.current)
     }
     ensureScaleSync()
-    const mainTimeScale = chart.timeScale()
     const handleCrosshairMove = (param) => {
       if (!param || !param.point || param.point.x < 0 || param.point.y < 0) {
-        hideCrosshairPriceLine()
         hoverCallbackRef.current?.(null)
         return
       }
@@ -920,18 +958,8 @@ const ensureScaleSync = () => {
         price = dataPoint?.value ?? dataPoint?.close ?? null
       }
       if (price === undefined || price === null) {
-        hideCrosshairPriceLine()
         return
       }
-      const line = ensureCrosshairPriceLine()
-      line?.applyOptions({
-        price,
-        color: CROSSHAIR_LABEL_COLOR,
-        axisLabelVisible: true,
-        lineVisible: true,
-        lineStyle: LineStyle.Dashed,
-        lineWidth: 1,
-      })
     }
 
     chart.subscribeCrosshairMove(handleCrosshairMove)
@@ -950,10 +978,6 @@ const ensureScaleSync = () => {
     return () => {
       resizeObserver.disconnect()
       chart.unsubscribeCrosshairMove(handleCrosshairMove)
-      if (crosshairPriceLineRef.current && mainSeriesRef.current) {
-        mainSeriesRef.current.removePriceLine(crosshairPriceLineRef.current)
-        crosshairPriceLineRef.current = null
-      }
       if (skeletonSeriesRef.current) {
         chart.removeSeries(skeletonSeriesRef.current)
         skeletonSeriesRef.current = null
@@ -1185,7 +1209,7 @@ const ensureScaleSync = () => {
       return
     }
     const glowColor = 'rgba(255, 214, 102, 0.25)'
-    const coreColor = blinkPhase ? '#ffd666' : 'rgba(255, 214, 102, 0.5)'
+    const coreColor = isTradingSession && blinkPhase ? '#ffd666' : 'rgba(255, 214, 102, 0.5)'
     mainSeriesRef.current.setMarkers([
       {
         time: lastPoint.virtualTime,
@@ -1206,7 +1230,7 @@ const ensureScaleSync = () => {
         price: Math.round(lastPrice * PRICE_MULTIPLIER),
       },
     ])
-  }, [normalizedTicks, blinkPhase, hasLineData])
+  }, [normalizedTicks, blinkPhase, hasLineData, isTradingSession])
 
   const handlePointerActivity = () => {
     lastInteractionRef.current = Date.now()
@@ -1214,11 +1238,12 @@ const ensureScaleSync = () => {
 
   const handleMouseEnter = () => {
     hoverStateRef.current = true
+    setIsChartHovered(true)
   }
 
   const handleMouseLeave = () => {
     hoverStateRef.current = false
-    hideCrosshairPriceLine()
+    setIsChartHovered(false)
     hoverCallbackRef.current?.(null)
   }
 
@@ -1251,7 +1276,6 @@ const ensureScaleSync = () => {
               className="intraday-axis-overlay"
               style={{ width: AXIS_WIDTH, height: heights.main }}
             >
-              <div className="intraday-axis-line" />
               {priceAxisLabels.map((tick) => (
                 <div
                   key={tick.key}
@@ -1283,19 +1307,7 @@ const ensureScaleSync = () => {
               className="intraday-axis-overlay"
               style={{ width: AXIS_WIDTH, height: heights.volume }}
             >
-              <div className="intraday-axis-line" />
-              {volumeAxisLabels.map((tick) => (
-                <div
-                  key={tick.key}
-                  className="intraday-axis-tick"
-                  style={{
-                    top: `${tick.position * 100}%`,
-                    transform: axisLabelTransform(tick.position),
-                  }}
-                >
-                  <span>{tick.label}</span>
-                </div>
-              ))}
+              {/* Volume axis hidden intentionally */}
             </div>
           </div>
         </div>

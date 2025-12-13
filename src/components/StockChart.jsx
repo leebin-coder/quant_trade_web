@@ -2854,6 +2854,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
             style={{
               position: 'absolute',
               left: '10px',
+              top: '-6px',
               zIndex: 10,
               display: 'flex',
               gap: '8px',
@@ -3282,6 +3283,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
                 height={intradayChartHeight}
                 stockInfo={stockInfo}
                 statusLabel={intradayStatusLabel || INTRADAY_STATUS_TEXT[intradayStatus] || ''}
+                intradayStatus={intradayStatus}
                 onHoverTickChange={handleIntradayHoverTickChange}
               />
             </div>
@@ -3292,17 +3294,22 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
         {isDataBoardEnabled && (
         <div
           style={{
-            padding: `0 0 ${rpSpace.block} ${rpSpace.block}`,
+            padding: 0,
             display: 'flex',
             flexDirection: 'column',
-            gap: rpSpace.small,
+            gap: 0,
             minHeight: 0,
             height: '100%',
+            transform: 'translateY(-20px)',
           }}
         >
           {isIntradayMode ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-              {intradayBoard || (
+              {intradayBoard ? (
+                <div style={{ flex: 1, width: '100%', height: '100%' }}>
+                  {intradayBoard}
+                </div>
+              ) : (
                 <div style={{ color: '#999', textAlign: 'center', marginTop: rpSpace.large }}>暂无分时看板数据</div>
               )}
             </div>
@@ -3442,7 +3449,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
               <div
                 style={{
                   paddingTop: rpSpace.large,
-                  marginTop: rpSpace.block,
+                  marginTop: rpSpace.small,
                   flexShrink: 0,
                 }}
               >
@@ -3517,7 +3524,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
             <div
               style={{
                 paddingTop: rpSpace.large,
-                marginTop: rpSpace.block,
+                  marginTop: rpSpace.small,
                 flexShrink: 0,
               }}
             >
@@ -3601,7 +3608,7 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
           <div
             style={{
               paddingTop: rpSpace.large,
-              marginTop: rpSpace.block,
+              marginTop: rpSpace.small,
               flexShrink: 1,
               overflowY: 'auto',
               minHeight: 0,
