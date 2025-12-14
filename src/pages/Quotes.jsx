@@ -135,6 +135,9 @@ function Quotes() {
   }, [chartHeaderHeight])
 
   const updateChartHeight = useCallback(() => {
+    if (!isTradingTabActive) {
+      return
+    }
     const tabContainer = tabContentRef.current
     const chartWrapper = chartSectionRef.current
     if (!tabContainer || !chartWrapper) return
@@ -143,14 +146,20 @@ function Quotes() {
     const MIN_CHART_HEIGHT = 260
     const availableHeight = Math.max(0, tabContainer.clientHeight - offsetInsideTab)
 
-    setChartHeight(Math.max(MIN_CHART_HEIGHT, availableHeight))
-  }, [])
+    setChartHeight((prev) => {
+      const next = Math.max(MIN_CHART_HEIGHT, availableHeight)
+      return prev === next ? prev : next
+    })
+  }, [isTradingTabActive])
 
   useEffect(() => {
     updateChartHeight()
-    if (typeof window === 'undefined') return
-    window.addEventListener('resize', updateChartHeight)
-    return () => window.removeEventListener('resize', updateChartHeight)
+    if (typeof window === 'undefined') return undefined
+    const handleResize = () => {
+      updateChartHeight()
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [updateChartHeight])
 
   useEffect(() => {

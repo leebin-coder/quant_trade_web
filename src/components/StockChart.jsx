@@ -3276,18 +3276,21 @@ function StockChart({ data = [], height = 600, title = '', stockInfo = null, com
               display: isIntradayMode ? 'none' : 'block',
             }}
           />
-          {isIntradayMode && (
-            <div className="intraday-proxy-chart">
-              <IntradayChart
-                data={intradayTicks}
-                height={intradayChartHeight}
-                stockInfo={stockInfo}
-                statusLabel={intradayStatusLabel || INTRADAY_STATUS_TEXT[intradayStatus] || ''}
-                intradayStatus={intradayStatus}
-                onHoverTickChange={handleIntradayHoverTickChange}
-              />
-            </div>
-          )}
+          <div
+            className="intraday-proxy-chart"
+            style={{
+              display: isIntradayMode ? 'block' : 'none',
+            }}
+          >
+            <IntradayChart
+              data={intradayTicks}
+              height={intradayChartHeight}
+              stockInfo={stockInfo}
+              statusLabel={intradayStatusLabel || INTRADAY_STATUS_TEXT[intradayStatus] || ''}
+              intradayStatus={intradayStatus}
+              onHoverTickChange={handleIntradayHoverTickChange}
+            />
+          </div>
         </div>
 
         {/* 右侧：数据看板 - 固定200px，分为三个区块 */}

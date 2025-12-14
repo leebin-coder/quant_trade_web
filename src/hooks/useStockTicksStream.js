@@ -192,6 +192,8 @@ export function useStockTicksStream({ stockCode, enabled, tradeDate }) {
   const mergedTicksRef = useRef([])
   const [streamState, setStreamState] = useState(INITIAL_STREAM_STATE)
   const [resolvedTradeDate, setResolvedTradeDate] = useState(() => tradeDate || getEffectiveTradingDate())
+  const latestTradeDateRef = useRef(resolvedTradeDate)
+  const activeTradeDateRef = useRef(null)
 
   useEffect(() => {
     stockCodeRef.current = stockCode
@@ -385,18 +387,34 @@ export function useStockTicksStream({ stockCode, enabled, tradeDate }) {
   }, [connect])
 
   useEffect(() => {
+    latestTradeDateRef.current = resolvedTradeDate
+  }, [resolvedTradeDate])
+
+  useEffect(() => {
     if (!enabled || !stockCode) {
+      activeTradeDateRef.current = null
       closeSocket('流未激活或股票未选择')
       resetState()
       return
     }
 
-    connect()
+    activeTradeDateRef.current = latestTradeDateRef.current
+    connectRef.current?.()
 
     return () => {
-      closeSocket('依赖变更/组件卸载')
+      activeTradeDateRef.current = null
+      closeSocket('股票或开关状态变更')
     }
-  }, [enabled, stockCode, closeSocket, connect, resetState])
+  }, [enabled, stockCode, closeSocket, resetState])
+
+  useEffect(() => {
+    if (!enabled || !stockCode) return
+    if (!resolvedTradeDate) return
+    if (activeTradeDateRef.current === resolvedTradeDate) return
+    activeTradeDateRef.current = resolvedTradeDate
+    closeSocket('交易日变更')
+    connectRef.current?.()
+  }, [resolvedTradeDate, enabled, stockCode, closeSocket])
 
   useEffect(() => {
     if (!stockCode) {

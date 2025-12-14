@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createChart, LineStyle } from 'lightweight-charts'
 import './IntradayChart.css'
 
@@ -138,7 +138,10 @@ const formatTimeToSeconds = (timeStr) => {
 const normalizeTicksForSessions = (ticks, fallbackDate) => {
   const safeTicks = Array.isArray(ticks) ? ticks : []
   const sampleDate = getTickDate(safeTicks.find((item) => getTickDate(item))) || fallbackDate
+  const normalizedFallbackDate = normalizeDate(fallbackDate)
   const segments = buildDaySegments(sampleDate)
+  const fallbackSegments = normalizedFallbackDate ? buildDaySegments(normalizedFallbackDate) : []
+  const rangeSegments = fallbackSegments.length ? fallbackSegments : segments
   const convertToVirtualTimestamp = (actualTs) => {
     if (!Number.isFinite(actualTs)) return null
     for (const segment of segments) {
@@ -204,25 +207,27 @@ const normalizeTicksForSessions = (ticks, fallbackDate) => {
     }
   })
   const sessionWindows = []
-  segments.forEach((segment, index) => {
+  rangeSegments.forEach((segment, index) => {
     sessionWindows.push({
       start: Math.floor(segment.virtualStart / 1000),
       end: Math.floor(segment.virtualEnd / 1000),
       type: index === 0 ? 'auction' : 'regular',
     })
   })
-  const normalizedDate = normalizeDate(sampleDate)
+  const normalizedDate = normalizedFallbackDate || normalizeDate(sampleDate)
   const firstVirtual = sessionWindows.length ? sessionWindows[0].start : null
   const lastVirtual = sessionWindows.length ? sessionWindows[sessionWindows.length - 1].end : null
   const earliestPointVirtual = normalized.length ? normalized[0].virtualTime : null
   const latestPointVirtual = normalized.length ? normalized[normalized.length - 1].virtualTime : null
   let fromTs = firstVirtual ?? earliestPointVirtual
   let toTs = lastVirtual ?? latestPointVirtual
-  if (earliestPointVirtual !== null) {
-    fromTs = Math.min(fromTs ?? earliestPointVirtual, earliestPointVirtual)
-  }
-  if (latestPointVirtual !== null) {
-    toTs = Math.max(toTs ?? latestPointVirtual, latestPointVirtual)
+  if (!sessionWindows.length) {
+    if (earliestPointVirtual !== null) {
+      fromTs = Math.min(fromTs ?? earliestPointVirtual, earliestPointVirtual)
+    }
+    if (latestPointVirtual !== null) {
+      toTs = Math.max(toTs ?? latestPointVirtual, latestPointVirtual)
+    }
   }
   if (!Number.isFinite(fromTs)) {
     const defaultStart = normalizedDate
@@ -548,16 +553,46 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel, intrad
     return '#ffffff'
   }, [latestPricePoint, referencePreClose])
 
+  const resolveShadowColor = useCallback((color) => {
+    if (!color) return {
+      top: 'rgba(255,255,255,0.15)',
+      bottom: 'rgba(255,255,255,0.05)',
+    }
+    if (color === COLOR_GREEN) {
+      return {
+        top: 'rgba(104,197,105,0.25)',
+        bottom: 'rgba(104,197,105,0.08)',
+      }
+    }
+    if (color === COLOR_RED) {
+      return {
+        top: 'rgba(235,79,62,0.2)',
+        bottom: 'rgba(235,79,62,0.05)',
+      }
+    }
+    if (color === COLOR_BLUE) {
+      return {
+        top: 'rgba(120,197,245,0.25)',
+        bottom: 'rgba(120,197,245,0.08)',
+      }
+    }
+    return {
+      top: 'rgba(255,255,255,0.18)',
+      bottom: 'rgba(255,255,255,0.04)',
+    }
+  }, [])
+
   useEffect(() => {
     const color = isChartHovered ? COLOR_BLUE : baseLineColor
     if (mainSeriesRef.current) {
+      const shadow = resolveShadowColor(color)
       mainSeriesRef.current.applyOptions({
         lineColor: color,
-        topColor: toRgba(color, 0.25),
-        bottomColor: toRgba(color, 0.05),
+        topColor: shadow.top,
+        bottomColor: shadow.bottom,
       })
     }
-  }, [isChartHovered, baseLineColor])
+  }, [isChartHovered, baseLineColor, resolveShadowColor])
   const extractCrosshairTime = (timeValue) => {
     if (timeValue === null || timeValue === undefined) return null
     if (typeof timeValue === 'object') {
@@ -900,10 +935,11 @@ const ensureScaleSync = () => {
       height: heights.main,
       autoSize: true,
     })
+    const baseShadow = resolveShadowColor(COLOR_BLUE)
     const series = chart.addAreaSeries({
       lineColor: COLOR_BLUE,
-      topColor: toRgba(COLOR_BLUE, 0.25),
-      bottomColor: toRgba(COLOR_BLUE, 0.05),
+      topColor: baseShadow.top,
+      bottomColor: baseShadow.bottom,
       lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: false,
@@ -967,6 +1003,9 @@ const ensureScaleSync = () => {
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height: nextHeight } = entry.contentRect
+        if (width <= 0 || nextHeight <= 0) {
+          continue
+        }
         chart.applyOptions({
           width,
           height: nextHeight,
@@ -986,7 +1025,7 @@ const ensureScaleSync = () => {
       mainChartInstanceRef.current = null
       mainSeriesRef.current = null
     }
-  }, [heights.main])
+  }, [heights.main, resolveShadowColor])
 
   useEffect(() => {
     if (!volumeChartRef.current || volumeChartInstanceRef.current) return
@@ -1077,6 +1116,9 @@ const ensureScaleSync = () => {
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height: nextHeight } = entry.contentRect
+        if (width <= 0 || nextHeight <= 0) {
+          continue
+        }
         chart.applyOptions({
           width,
           height: nextHeight,
@@ -1322,4 +1364,17 @@ const ensureScaleSync = () => {
   )
 }
 
-export default IntradayChart
+const areIntradayPropsEqual = (prev, next) => {
+  if (prev === next) return true
+  if (!prev || !next) return false
+  return (
+    prev.data === next.data &&
+    prev.height === next.height &&
+    prev.stockInfo === next.stockInfo &&
+    prev.statusLabel === next.statusLabel &&
+    prev.intradayStatus === next.intradayStatus &&
+    prev.onHoverTickChange === next.onHoverTickChange
+  )
+}
+
+export default memo(IntradayChart, areIntradayPropsEqual)
