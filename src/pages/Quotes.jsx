@@ -136,20 +136,12 @@ function Quotes() {
 
   const updateChartHeight = useCallback(() => {
     const tabContainer = tabContentRef.current
-    if (!tabContainer) return
-
     const chartWrapper = chartSectionRef.current
-    const wrapperParent = quotesTabsWrapperRef.current
-    const stockContainer = stockModuleRef.current
+    if (!tabContainer || !chartWrapper) return
 
-    const containerHeight =
-      wrapperParent?.clientHeight ||
-      stockContainer?.clientHeight ||
-      tabContainer.clientHeight
-
-    const offsetInsideWrapper = chartWrapper?.offsetTop || 0
+    const offsetInsideTab = chartWrapper.offsetTop
     const MIN_CHART_HEIGHT = 260
-    const availableHeight = Math.max(0, containerHeight - offsetInsideWrapper)
+    const availableHeight = Math.max(0, tabContainer.clientHeight - offsetInsideTab)
 
     setChartHeight(Math.max(MIN_CHART_HEIGHT, availableHeight))
   }, [])
