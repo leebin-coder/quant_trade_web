@@ -1,7 +1,7 @@
 .quotes-container {
   --quotes-gutter: clamp(10px, 1.4vw, 16px);
   --quotes-selector-width: 240px;
-  --quotes-selector-top: 98px;
+  --quotes-selector-top: 93px;
   --quotes-selector-bottom: 8px;
   --quotes-header-height: 48px;
   --quotes-tabs-bar-height: 44px;
@@ -23,8 +23,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  margin: var(--quotes-selector-top) 0 var(--quotes-selector-bottom) 0;
-  height: var(--quotes-content-height);
+  margin: 0 0 var(--quotes-selector-bottom) 0;
   padding: 0 8px 0 calc(var(--quotes-selector-width) + var(--quotes-gutter));
   box-sizing: border-box;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
