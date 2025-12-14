@@ -1,10 +1,16 @@
 .quotes-container {
   --quotes-gutter: clamp(10px, 1.4vw, 16px);
   --quotes-selector-width: 240px;
+  --quotes-selector-top: 98px;
+  --quotes-selector-bottom: 8px;
+  --quotes-header-height: 48px;
+  --quotes-tabs-bar-height: 44px;
+  --quotes-content-height: calc(100vh - var(--quotes-selector-top) - var(--quotes-selector-bottom));
   position: relative;
   width: 100%;
-  height: 100vh;
-  max-height: 100vh;
+  height: calc(100vh - var(--quotes-header-height));
+  max-height: calc(100vh - var(--quotes-header-height));
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background-color: rgb(8, 8, 8);
@@ -20,6 +26,9 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding: calc(var(--quotes-selector-top) - var(--quotes-header-height) - var(--quotes-tabs-bar-height)) 8px var(--quotes-selector-bottom)
+    calc(var(--quotes-selector-width) + var(--quotes-gutter));
+  box-sizing: border-box;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -29,7 +38,6 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
-  padding: var(--quotes-gutter) 2px 8px calc(var(--quotes-selector-width) + var(--quotes-gutter));
   box-sizing: border-box;
   overflow: hidden;
   min-height: 0;
@@ -45,8 +53,9 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  flex: 1;
-  height: 100%;
+  flex: 1 1 auto;
+  height: var(--quotes-content-height);
+  max-height: var(--quotes-content-height);
   min-height: 0;
   overflow: hidden;
   overscroll-behavior: contain;
@@ -58,10 +67,16 @@
   display: flex;
   align-items: flex-end; /* 底部对齐 */
   justify-content: flex-end; /* 固定在右边 */
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   padding: 0; /* 移除padding，让tab紧贴边缘 */
   background: rgb(8, 8, 8);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  height: var(--quotes-tabs-bar-height);
+  min-height: var(--quotes-tabs-bar-height);
+  z-index: 5;
 }
 
 /* 交易数据Tabs容器 - 固定在右边 */
@@ -133,9 +148,13 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  height: 100%;
+  max-height: 100%;
   overflow: hidden;
   background: rgb(8, 8, 8);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  padding-top: var(--quotes-tabs-bar-height);
+  box-sizing: border-box;
 }
 
 /* Tab面板 */

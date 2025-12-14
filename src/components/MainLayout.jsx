@@ -52,6 +52,7 @@ function MainLayoutInner() {
   const { visible, targetNodeId, openKnowledge, closeKnowledge } = useKnowledgeBase()
   const navigate = useNavigate()
   const location = useLocation()
+  const isQuotesPage = location.pathname === '/quotes'
 
   // 获取用户信息，昵称默认为"韭菜+手机号后四位"
   const getDisplayName = () => {
@@ -219,10 +220,10 @@ function MainLayoutInner() {
         <div
           className="content-area"
           style={{
-            padding: '2px 0 0 0',
+            padding: isQuotesPage ? '0' : '2px 0 0 0',
             height: '100%',
             background: 'rgb(8, 8, 8)',
-            overflow: 'auto',
+            overflow: isQuotesPage ? 'hidden' : 'auto',
             transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >

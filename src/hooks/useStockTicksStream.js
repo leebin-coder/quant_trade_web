@@ -355,7 +355,7 @@ export function useStockTicksStream({ stockCode, enabled, tradeDate }) {
       socket.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data)
-          console.log(`[TickWS:${targetStock}] 📦 数据`, payload)
+          // console.log(`[TickWS:${targetStock}] 📦 数据`, payload)
           if (typeof payload.tradingFinished === 'boolean') {
             tradingFinishedRef.current = payload.tradingFinished
           }

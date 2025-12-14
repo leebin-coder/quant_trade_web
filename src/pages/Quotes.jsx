@@ -49,7 +49,9 @@ function Quotes() {
   const dataCacheRef = useRef({})
   const currentStockCodeRef = useRef(null)
   const containerRef = useRef(null)
-  const mainModulesRef = useRef(null)
+  const moduleContentRef = useRef(null)
+  const stockModuleRef = useRef(null)
+  const quotesTabsWrapperRef = useRef(null)
   const tradingTabsRef = useRef(null)
   const tabContentRef = useRef(null)
   const chartSectionRef = useRef(null)
@@ -130,36 +132,27 @@ function Quotes() {
       const roundedNext = Math.round(height || 0)
       return roundedPrev === roundedNext ? prev : height || 0
     })
-  }, [])
+  }, [chartHeaderHeight])
 
   const updateChartHeight = useCallback(() => {
-    if (typeof window === 'undefined') return
-    const viewport = window.innerHeight || 900
-    const containerOffset = containerRef.current ? Math.max(0, containerRef.current.getBoundingClientRect().top) : 0
-    const modulesHeight = mainModulesRef.current?.offsetHeight || 0
-    const tabsHeight = tradingTabsRef.current?.offsetHeight || 0
-    const titleHeight = chartHeaderHeight || 0
-    const displayAreaHeight = tabContentRef.current
-      ? tabContentRef.current.clientHeight
-      : viewport - containerOffset - modulesHeight - tabsHeight
+    const tabContainer = tabContentRef.current
+    if (!tabContainer) return
+
+    const chartWrapper = chartSectionRef.current
+    const wrapperParent = quotesTabsWrapperRef.current
+    const stockContainer = stockModuleRef.current
+
+    const containerHeight =
+      wrapperParent?.clientHeight ||
+      stockContainer?.clientHeight ||
+      tabContainer.clientHeight
+
+    const offsetInsideWrapper = chartWrapper?.offsetTop || 0
     const MIN_CHART_HEIGHT = 260
-    const sectionTop = chartSectionRef.current
-      ? Math.max(0, chartSectionRef.current.getBoundingClientRect().top)
-      : containerOffset + modulesHeight + tabsHeight + titleHeight
-    const viewportAvailable = viewport - sectionTop
-    const tabHeight = tabContentRef.current?.clientHeight ?? null
-    const chartOffsetWithinTab = tabContentRef.current && chartSectionRef.current
-      ? chartSectionRef.current.offsetTop
-      : 0
-    const tabAvailable = tabHeight !== null
-      ? tabHeight - chartOffsetWithinTab
-      : null
-    const maxChartHeight = tabAvailable !== null
-      ? Math.max(MIN_CHART_HEIGHT, tabAvailable)
-      : viewportAvailable
-    const constrainedHeight = Math.max(MIN_CHART_HEIGHT, Math.min(maxChartHeight, viewportAvailable))
-    setChartHeight(constrainedHeight)
-  }, [chartHeaderHeight])
+    const availableHeight = Math.max(0, containerHeight - offsetInsideWrapper)
+
+    setChartHeight(Math.max(MIN_CHART_HEIGHT, availableHeight))
+  }, [])
 
   useEffect(() => {
     updateChartHeight()
@@ -541,15 +534,15 @@ function Quotes() {
   return (
     <div className="quotes-container" ref={containerRef}>
       {/* 模块内容区域 */}
-      <div className="module-content">
+      <div className="module-content" ref={moduleContentRef}>
         {mainModule === 'stock' ? (
           // 个股模块
-          <div className="stock-module">
+          <div className="stock-module" ref={stockModuleRef}>
             {/* 左侧股票选择器 */}
             <StockSelector onStockSelect={handleStockSelect} />
 
             {/* 右侧：Tab Bar + 内容 */}
-            <div className="quotes-tabs-wrapper">
+            <div className="quotes-tabs-wrapper" ref={quotesTabsWrapperRef}>
               {/* Tab Bar 容器 */}
               <div className="tabs-bar-container" ref={tradingTabsRef}>
                 {/* 交易数据Tabs */}

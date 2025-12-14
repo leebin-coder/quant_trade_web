@@ -2,8 +2,8 @@
 .stock-selector {
   position: fixed;
   left: 8px;
-  top: 97px; /* 导航栏48px + 主模块切换48px + Tab Bar 12px padding */
-  bottom: 8px; /* 与展示区域底部间距保持一致 */
+  top: var(--quotes-selector-top, 98px); /* 导航栏48px + 主模块切换48px + Tab Bar 12px padding */
+  bottom: var(--quotes-selector-bottom, 8px); /* 与展示区域底部间距保持一致 */
   width: 240px;
   background: rgb(28, 28, 28);
   backdrop-filter: blur(10px);
