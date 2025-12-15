@@ -29,29 +29,6 @@ const buildTickKey = (tick) => {
   return `${date}-${time}-${code}`
 }
 
-const sortTicks = (ticks) => {
-  return ticks.slice().sort((a, b) => {
-    const left = `${a.date || ''} ${a.time || ''}`
-    const right = `${b.date || ''} ${b.time || ''}`
-    if (left === right) return 0
-    return left > right ? 1 : -1
-  })
-}
-
-const normalizeTicks = (ticks) => {
-  if (!Array.isArray(ticks) || ticks.length === 0) {
-    return []
-  }
-  const map = new Map()
-  ticks.forEach((tick) => {
-    const key = buildTickKey(tick)
-    if (key) {
-      map.set(key, tick)
-    }
-  })
-  return sortTicks(Array.from(map.values()))
-}
-
 const normalizeDateString = (value) => {
   if (!value || typeof value !== 'string') return ''
   if (value.includes('-')) return value
@@ -74,6 +51,48 @@ const parseDateTime = (dateStr, timeStr) => {
   const parsed = Date.parse(composed)
   if (Number.isNaN(parsed)) return null
   return parsed
+}
+
+const getTickTimestamp = (tick) => {
+  if (!tick) return Number.NEGATIVE_INFINITY
+  if (Number.isFinite(tick.__timestamp)) {
+    return Number(tick.__timestamp)
+  }
+  const datePart = tick.date || tick.trade_date || tick.trading_date || ''
+  const timePart = tick.time || tick.trade_time || ''
+  const parsed = parseDateTime(datePart, timePart)
+  if (parsed === null) {
+    return Number.NEGATIVE_INFINITY
+  }
+  return parsed
+}
+
+const sortTicks = (ticks) => {
+  return ticks.slice().sort((a, b) => {
+    const leftTs = getTickTimestamp(a)
+    const rightTs = getTickTimestamp(b)
+    if (leftTs === rightTs) {
+      const leftKey = buildTickKey(a)
+      const rightKey = buildTickKey(b)
+      if (leftKey === rightKey) return 0
+      return leftKey > rightKey ? 1 : -1
+    }
+    return leftTs - rightTs
+  })
+}
+
+const normalizeTicks = (ticks) => {
+  if (!Array.isArray(ticks) || ticks.length === 0) {
+    return []
+  }
+  const map = new Map()
+  ticks.forEach((tick) => {
+    const key = buildTickKey(tick)
+    if (key) {
+      map.set(key, tick)
+    }
+  })
+  return sortTicks(Array.from(map.values()))
 }
 
 const getSessionBoundaries = (dateStr) => {
@@ -189,6 +208,7 @@ export function useStockTicksStream({ stockCode, enabled, tradeDate }) {
   const tradingFinishedRef = useRef(false)
   const connectRef = useRef(null)
   const historyRef = useRef([])
+  const latestRef = useRef([])
   const mergedTicksRef = useRef([])
   const [streamState, setStreamState] = useState(INITIAL_STREAM_STATE)
   const [resolvedTradeDate, setResolvedTradeDate] = useState(() => tradeDate || getEffectiveTradingDate())
@@ -227,6 +247,7 @@ export function useStockTicksStream({ stockCode, enabled, tradeDate }) {
 
   const resetState = useCallback(() => {
     historyRef.current = []
+    latestRef.current = []
     mergedTicksRef.current = []
     setStreamState(INITIAL_STREAM_STATE)
   }, [])
@@ -267,21 +288,47 @@ export function useStockTicksStream({ stockCode, enabled, tradeDate }) {
         filteredLatest = incomingLatest
       }
 
+      let historyUpdated = false
       if (filteredHistory.length) {
-        historyRef.current = filteredHistory
+        const normalizedHistory = normalizeTicks(filteredHistory)
+        historyRef.current = normalizedHistory
+        historyUpdated = true
       } else if (incomingHistory.length) {
-        historyRef.current = incomingHistory
+        const normalizedHistory = normalizeTicks(incomingHistory)
+        historyRef.current = normalizedHistory
+        historyUpdated = true
       }
 
-      mergedTicksRef.current = normalizeTicks([
-        ...historyRef.current,
-        ...filteredLatest,
-      ])
+      let hasNewLatest = false
+      if (filteredLatest.length) {
+        latestRef.current = normalizeTicks([
+          ...latestRef.current,
+          ...filteredLatest,
+        ])
+        hasNewLatest = true
+      } else if (incomingLatest.length) {
+        latestRef.current = normalizeTicks([
+          ...latestRef.current,
+          ...incomingLatest,
+        ])
+        hasNewLatest = true
+      }
+
+      if (historyUpdated || hasNewLatest || (!mergedTicksRef.current.length && historyRef.current.length)) {
+        mergedTicksRef.current = normalizeTicks([
+          ...historyRef.current,
+          ...latestRef.current,
+        ])
+      }
+
+      const latestDisplay = filteredLatest.length
+        ? filteredLatest
+        : (incomingLatest.length ? incomingLatest : prev.latestTicks)
 
       return {
         status: normalizedStatus,
         historyTicks: historyRef.current,
-        latestTicks: filteredLatest,
+        latestTicks: latestDisplay,
         ticks: mergedTicksRef.current,
         tradeDate: tradeDateMeta ?? prev.tradeDate ?? resolvedTradeDate ?? null,
         connectionState: prev.connectionState,
