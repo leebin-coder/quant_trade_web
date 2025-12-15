@@ -678,13 +678,18 @@ function IntradayChart({ data = [], height = 520, stockInfo, statusLabel, intrad
     const startBase = Number.isFinite(tradingDayBounds?.start)
       ? tradingDayBounds.start
       : virtualRange.from
-    const endBase = Math.max(virtualRange.to, startBase + 60)
+    const endTarget = Number.isFinite(tradingDayBounds?.end)
+      ? tradingDayBounds.end
+      : virtualRange.to
+    const endBase = Math.max(endTarget, startBase + 60)
     const coreSpan = Math.max(endBase - startBase, 1)
-    const rightPad = Math.max(Math.floor(coreSpan * RIGHT_PADDING_RATIO), MIN_RIGHT_PADDING)
+    const rightPad = Number.isFinite(tradingDayBounds?.end)
+      ? 0
+      : Math.max(Math.floor(coreSpan * RIGHT_PADDING_RATIO), MIN_RIGHT_PADDING)
     const from = Math.max(0, Math.floor(startBase))
     let to = Math.floor(endBase + rightPad)
     if (Number.isFinite(tradingDayBounds?.end)) {
-      to = Math.min(to, tradingDayBounds.end + Math.floor(rightPad * 0.5))
+      to = tradingDayBounds.end
     }
     if (to <= from) {
       to = from + 60
