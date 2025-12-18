@@ -515,14 +515,14 @@ function Quotes() {
     {
       key: 'depth',
       label: '五档',
-      children: <FiveLevelBoard tick={latestTick} />,
+      children: <FiveLevelBoard tick={latestTick} ticks={intradayTicks} />,
     },
     {
       key: 'deals',
       label: '成交',
       children: <BoardPlaceholder message="成交明细模块建设中" />,
     },
-  ]), [latestTick])
+  ]), [intradayTicks, latestTick])
 
   const intradayBoard = useMemo(() => (
     <Tabs
@@ -670,6 +670,8 @@ export default Quotes
 
 const SELL_LEVELS = [5, 4, 3, 2, 1]
 const BUY_LEVELS = [1, 2, 3, 4, 5]
+const SELL_LEVEL_INDEX = Math.max(0, SELL_LEVELS.findIndex((level) => level === 1))
+const BUY_LEVEL_INDEX = 0
 
 const formatPriceValue = (value) => {
   if (value === null || value === undefined) return '--'
@@ -713,6 +715,25 @@ const resolveVolumeNumber = (value) => {
   return Number.isFinite(num) && num > 0 ? num : 0
 }
 
+const resolvePriceValue = (tick) => {
+  if (!tick) return null
+  const candidates = [
+    tick.price,
+    tick.trade,
+    tick.close,
+    tick.last,
+  ]
+  for (const value of candidates) {
+    if (value === 0 || value) {
+      const num = Number(value)
+      if (!Number.isNaN(num)) {
+        return num
+      }
+    }
+  }
+  return null
+}
+
 function BoardPlaceholder({ message }) {
   return (
     <div className="board-placeholder">
@@ -721,93 +742,747 @@ function BoardPlaceholder({ message }) {
   )
 }
 
-function FiveLevelBoard({ tick }) {
-  if (!tick) {
-    return <Empty description="暂无五档数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-  }
+function FiveLevelBoard({ tick, ticks = [] }) {
+  const [activeView, setActiveView] = useState('book')
+  const history = useMemo(() => buildDepthHistory(ticks), [ticks])
+  const hasHistory = history.entries.length > 0
 
-  const previousClose = resolvePreCloseValue(tick)
-  const sellRows = SELL_LEVELS.map((level) => ({
-    level,
-    price: tick[`a${level}_p`],
-    volume: resolveVolumeNumber(tick[`a${level}_v`]),
-    side: 'sell',
-  }))
-  const buyRows = BUY_LEVELS.map((level) => ({
-    level,
-    price: tick[`b${level}_p`],
-    volume: resolveVolumeNumber(tick[`b${level}_v`]),
-    side: 'buy',
-  }))
-  const combinedVolumes = [...sellRows, ...buyRows].map((row) => row.volume)
-  const maxVolume = combinedVolumes.length ? Math.max(...combinedVolumes, 0) : 0
-  const safeMaxVolume = maxVolume > 0 ? maxVolume : 1
+  useEffect(() => {
+    if (!hasHistory && activeView !== 'book') {
+      setActiveView('book')
+    }
+  }, [hasHistory, activeView])
 
-  const renderRow = (row) => {
-    const widthPercent = row.volume > 0 ? (row.volume / safeMaxVolume) * 100 : 0
-    let priceColor = row.side === 'sell' ? '#52c41a' : '#f5222d'
-    if (previousClose !== null && previousClose !== undefined && row.price !== null && row.price !== undefined) {
-      const numericPrice = Number(row.price)
-      if (!Number.isNaN(numericPrice)) {
-        if (numericPrice > previousClose) {
-          priceColor = '#ef232a'
-        } else if (numericPrice < previousClose) {
-          priceColor = '#14b143'
-        } else {
-          priceColor = '#8c8c8c'
+  const renderOrderBook = () => {
+    if (!tick) {
+      return (
+        <div className="five-level-empty">
+          <Empty description="暂无五档数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        </div>
+      )
+    }
+
+    const previousClose = resolvePreCloseValue(tick)
+    const sellRows = SELL_LEVELS.map((level) => ({
+      level,
+      price: tick[`a${level}_p`],
+      volume: resolveVolumeNumber(tick[`a${level}_v`]),
+      side: 'sell',
+    }))
+    const buyRows = BUY_LEVELS.map((level) => ({
+      level,
+      price: tick[`b${level}_p`],
+      volume: resolveVolumeNumber(tick[`b${level}_v`]),
+      side: 'buy',
+    }))
+    const combinedVolumes = [...sellRows, ...buyRows].map((row) => row.volume)
+    const maxVolume = combinedVolumes.length ? Math.max(...combinedVolumes, 0) : 0
+    const safeMaxVolume = maxVolume > 0 ? maxVolume : 1
+    const totalSellVolume = sellRows.reduce((sum, row) => sum + row.volume, 0)
+    const totalBuyVolume = buyRows.reduce((sum, row) => sum + row.volume, 0)
+    const totalVolume = totalSellVolume + totalBuyVolume
+    const buyRatio = totalVolume > 0 ? (totalBuyVolume / totalVolume) : 0.5
+    const sellRatio = 1 - buyRatio
+
+    const renderRow = (row) => {
+      const widthPercent = row.volume > 0 ? (row.volume / safeMaxVolume) * 100 : 0
+      let priceColor = row.side === 'sell' ? '#52c41a' : '#f5222d'
+      if (previousClose !== null && previousClose !== undefined && row.price !== null && row.price !== undefined) {
+        const numericPrice = Number(row.price)
+        if (!Number.isNaN(numericPrice)) {
+          if (numericPrice > previousClose) {
+            priceColor = '#ef232a'
+          } else if (numericPrice < previousClose) {
+            priceColor = '#14b143'
+          } else {
+            priceColor = '#8c8c8c'
+          }
         }
+      } else {
+        priceColor = '#8c8c8c'
       }
-    } else {
-      priceColor = '#8c8c8c'
+
+      return (
+        <div className={`orderbook-row ${row.side}`} key={`${row.side}-${row.level}`}>
+          <div
+            className={`orderbook-row-bar ${row.side}`}
+            style={{ width: `${Math.min(100, Math.max(6, widthPercent))}%` }}
+          />
+          <span className="level-label">{`${row.side === 'sell' ? '卖' : '买'}${row.level}`}</span>
+          <span className="price" style={{ color: priceColor }}>{formatPriceValue(row.price)}</span>
+          <span className="volume">{formatDepthVolume(row.volume)}</span>
+        </div>
+      )
     }
 
     return (
-      <div className={`orderbook-row ${row.side}`} key={`${row.side}-${row.level}`}>
-        <div
-          className={`orderbook-row-bar ${row.side}`}
-          style={{ width: `${Math.min(100, Math.max(6, widthPercent))}%` }}
-        />
-        <span className="level-label">{`${row.side === 'sell' ? '卖' : '买'}${row.level}`}</span>
-        <span className="price" style={{ color: priceColor }}>{formatPriceValue(row.price)}</span>
-        <span className="volume">{formatDepthVolume(row.volume)}</span>
+      <>
+        <div className="orderbook-side">
+          <div className="side-title">卖盘</div>
+          <div className="orderbook-rows">
+            {sellRows.map(renderRow)}
+          </div>
+        </div>
+        <div className="orderbook-ratio">
+          <div className="ratio-labels">
+            <span>卖 {formatDepthVolume(totalSellVolume)}</span>
+            <span>买 {formatDepthVolume(totalBuyVolume)}</span>
+          </div>
+          <div className="ratio-bar">
+            <div className="ratio-segment sell" style={{ flexBasis: `${sellRatio * 100}%` }} />
+            <div className="ratio-segment buy" style={{ flexBasis: `${buyRatio * 100}%` }} />
+          </div>
+          <div className="ratio-values">
+            <span style={{ color: '#14b143' }}>{(sellRatio * 100).toFixed(1)}%</span>
+            <span style={{ color: '#ef232a' }}>{(buyRatio * 100).toFixed(1)}%</span>
+          </div>
+        </div>
+        <div className="orderbook-side">
+          <div className="side-title">买盘</div>
+          <div className="orderbook-rows">
+            {buyRows.map(renderRow)}
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (!tick && !hasHistory) {
+    return (
+      <>
+        <div className="five-level-nav">
+          <button type="button" className="active" disabled>
+            盘口
+          </button>
+        </div>
+        <div className="five-level-empty">
+          <Empty description="暂无五档数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        </div>
+      </>
+    )
+  }
+
+  const viewOptions = [
+    { key: 'book', label: '盘口', disabled: !tick },
+    { key: 'price', label: '价格', disabled: !hasHistory },
+    { key: 'volume', label: '委托量', disabled: !hasHistory },
+  ]
+
+  return (
+    <>
+      <div className="five-level-nav">
+        {viewOptions.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            disabled={option.disabled}
+            className={activeView === option.key ? 'active' : ''}
+            onClick={() => setActiveView(option.key)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {activeView === 'book'
+        ? renderOrderBook()
+        : (
+          <FiveLevelHistoryChart
+            history={history}
+            chartType={activeView === 'price' ? 'price' : 'volume'}
+          />
+        )}
+    </>
+  )
+}
+
+const HISTORY_LIMIT = 600
+const SELL_PRICE_LINE_COLOR = '#ef232a'
+const BUY_PRICE_LINE_COLOR = '#14b143'
+const SELL_PRICE_FILL_COLOR = 'rgba(239, 35, 42, 0.12)'
+const BUY_PRICE_FILL_COLOR = null
+const SELL_VOLUME_LINE_COLOR = '#f8d27a'
+const BUY_VOLUME_LINE_COLOR = '#7bc8ff'
+const SELL_VOLUME_FILL_COLOR = null
+const BUY_VOLUME_FILL_COLOR = null
+
+const normalizeBoardDate = (value) => {
+  if (!value) return ''
+  if (value instanceof Date) {
+    const yyyy = value.getFullYear()
+    const mm = String(value.getMonth() + 1).padStart(2, '0')
+    const dd = String(value.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }
+  const str = String(value).trim()
+  if (!str) return ''
+  if (str.includes('-')) return str
+  if (str.length === 8) {
+    return `${str.slice(0, 4)}-${str.slice(4, 6)}-${str.slice(6, 8)}`
+  }
+  return str
+}
+
+const normalizeBoardTime = (value) => {
+  if (value === null || value === undefined) return ''
+  const str = String(value).trim()
+  if (!str) return ''
+  if (str.includes(':')) {
+    const [hh = '00', mm = '00', ss = '00'] = str.split(':')
+    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
+  }
+  const padded = str.padStart(6, '0')
+  if (padded.length < 6) return ''
+  return `${padded.slice(0, 2)}:${padded.slice(2, 4)}:${padded.slice(4, 6)}`
+}
+
+const parseDepthTimestamp = (tick) => {
+  if (!tick) return null
+  if (Number.isFinite(tick.__timestamp)) {
+    return Number(tick.__timestamp)
+  }
+  const datePart = normalizeBoardDate(tick.date || tick.trade_date || tick.trading_date || '')
+  const timePart = normalizeBoardTime(tick.time || tick.trade_time || '')
+  if (!datePart || !timePart) return null
+  const composed = `${datePart}T${timePart}+08:00`
+  const parsed = Date.parse(composed)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
+const AUCTION_START_SECONDS = (9 * 3600) + (15 * 60)
+const AUCTION_END_SECONDS = (9 * 3600) + (25 * 60)
+
+const formatDepthTimeLabel = (timestamp) => {
+  if (!Number.isFinite(timestamp)) return '--:--'
+  const date = new Date(timestamp)
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+const isAuctionTimestamp = (timestamp) => {
+  if (!Number.isFinite(timestamp)) return false
+  const date = new Date(timestamp)
+  const seconds = (date.getHours() * 3600) + (date.getMinutes() * 60) + date.getSeconds()
+  return seconds >= AUCTION_START_SECONDS && seconds <= AUCTION_END_SECONDS
+}
+
+const toNumeric = (value) => {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : null
+}
+
+const toPositiveNumeric = (value) => {
+  const num = Number(value)
+  return Number.isFinite(num) && num >= 0 ? num : null
+}
+
+const buildDepthHistory = (ticks) => {
+  if (!Array.isArray(ticks) || !ticks.length) {
+    return { entries: [], startLabel: '--:--', endLabel: '--:--', referencePrevClose: null, referenceLastPrice: null }
+  }
+  const recent = ticks.length > HISTORY_LIMIT ? ticks.slice(-HISTORY_LIMIT) : ticks
+  let referencePrevClose = null
+  let referenceLastPrice = null
+  const entries = recent
+    .map((item, index) => {
+      const timestamp = parseDepthTimestamp(item)
+      const fallbackLabel = `#${index + 1}`
+      const sells = SELL_LEVELS.map((level) => toNumeric(item[`a${level}_p`]))
+      const buys = BUY_LEVELS.map((level) => toNumeric(item[`b${level}_p`]))
+      const sellVolumes = SELL_LEVELS.map((level) => toPositiveNumeric(item[`a${level}_v`]))
+      const buyVolumes = BUY_LEVELS.map((level) => toPositiveNumeric(item[`b${level}_v`]))
+      const hasValues = [...sells, ...buys, ...sellVolumes, ...buyVolumes].some((value) => value !== null)
+      if (!hasValues) return null
+      if (referencePrevClose === null) {
+        const prevCandidate = resolvePreCloseValue(item)
+        if (prevCandidate !== null) {
+          referencePrevClose = prevCandidate
+        }
+      }
+      const latestPrice = resolvePriceValue(item)
+      if (latestPrice !== null) {
+        referenceLastPrice = latestPrice
+      }
+      return {
+        timestamp,
+        label: timestamp ? formatDepthTimeLabel(timestamp) : fallbackLabel,
+        sells,
+        buys,
+        sellVolumes,
+        buyVolumes,
+        isAuction: isAuctionTimestamp(timestamp),
+      }
+    })
+    .filter(Boolean)
+
+  if (!entries.length) {
+    return { entries: [], startLabel: '--:--', endLabel: '--:--', referencePrevClose: null, referenceLastPrice: null }
+  }
+  return {
+    entries,
+    startLabel: entries[0].label,
+    endLabel: entries[entries.length - 1].label,
+    referencePrevClose,
+    referenceLastPrice,
+  }
+}
+
+function FiveLevelHistoryChart({ history, chartType = 'price' }) {
+  const filteredEntries = useMemo(() => {
+    if (chartType !== 'price') return history.entries
+    const nonAuction = history.entries.filter((entry) => !entry?.isAuction)
+    return nonAuction.length ? nonAuction : history.entries
+  }, [history.entries, chartType])
+
+  if (!filteredEntries.length) {
+    return (
+      <div className="five-level-empty">
+        <Empty description="暂无可用曲线" image={Empty.PRESENTED_IMAGE_SIMPLE} />
       </div>
     )
   }
 
-  const totalSellVolume = sellRows.reduce((sum, row) => sum + row.volume, 0)
-  const totalBuyVolume = buyRows.reduce((sum, row) => sum + row.volume, 0)
-  const totalVolume = totalSellVolume + totalBuyVolume
-  const buyRatio = totalVolume > 0 ? (totalBuyVolume / totalVolume) : 0.5
-  const sellRatio = 1 - buyRatio
+  if (chartType === 'volume') {
+    return (
+      <VolumeHeatmapPanel
+        entries={filteredEntries}
+        referenceLastPrice={history.referenceLastPrice}
+      />
+    )
+  }
 
   return (
-    <div className="five-level-board">
-      <div className="orderbook-side">
-        <div className="side-title">卖盘</div>
-        <div className="orderbook-rows">
-          {sellRows.map(renderRow)}
-        </div>
+    <DepthChartPanel
+      entries={filteredEntries}
+      startLabel={filteredEntries[0]?.label || '--'}
+      endLabel={filteredEntries[filteredEntries.length - 1]?.label || '--'}
+      type={chartType}
+      referencePrevClose={history.referencePrevClose}
+      referenceLastPrice={history.referenceLastPrice}
+    />
+  )
+}
+
+const HEATMAP_ROWS = [
+  { key: 'sell-5', label: '卖五', level: 5, side: 'sell', order: 0 },
+  { key: 'sell-4', label: '卖四', level: 4, side: 'sell', order: 1 },
+  { key: 'sell-3', label: '卖三', level: 3, side: 'sell', order: 2 },
+  { key: 'sell-2', label: '卖二', level: 2, side: 'sell', order: 3 },
+  { key: 'sell-1', label: '卖一', level: 1, side: 'sell', order: 4 },
+  { key: 'buy-1', label: '买一', level: 1, side: 'buy', order: 5 },
+  { key: 'buy-2', label: '买二', level: 2, side: 'buy', order: 6 },
+  { key: 'buy-3', label: '买三', level: 3, side: 'buy', order: 7 },
+  { key: 'buy-4', label: '买四', level: 4, side: 'buy', order: 8 },
+  { key: 'buy-5', label: '买五', level: 5, side: 'buy', order: 9 },
+]
+
+const SELL_HEATMAP_RGB = [239, 35, 42]
+const BUY_HEATMAP_RGB = [20, 177, 67]
+const HEATMAP_REFERENCE_HEIGHT = 520
+const PRICE_UP_COLOR = '#ef232a'
+const PRICE_DOWN_COLOR = '#14b143'
+const PRICE_FLAT_COLOR = '#8c8c8c'
+const PRICE_MATCH_HIGHLIGHT = '#ffd666'
+
+const clampRatio = (value, min = 0, max = 1) => Math.min(max, Math.max(min, value))
+
+const resolveRowVolume = (entry, row) => {
+  if (!entry) return null
+  if (row.side === 'sell') {
+    const index = SELL_LEVELS.findIndex((level) => level === row.level)
+    return index >= 0 ? entry.sellVolumes?.[index] ?? null : null
+  }
+  const index = BUY_LEVELS.findIndex((level) => level === row.level)
+  return index >= 0 ? entry.buyVolumes?.[index] ?? null : null
+}
+
+const resolveRowPrice = (entry, row) => {
+  if (!entry) return null
+  if (row.side === 'sell') {
+    const index = SELL_LEVELS.findIndex((level) => level === row.level)
+    return index >= 0 ? entry.sells?.[index] ?? null : null
+  }
+  const index = BUY_LEVELS.findIndex((level) => level === row.level)
+  return index >= 0 ? entry.buys?.[index] ?? null : null
+}
+
+const getHeatmapColor = (side, ratio) => {
+  const [r, g, b] = side === 'sell' ? SELL_HEATMAP_RGB : BUY_HEATMAP_RGB
+  const alpha = 0.12 + clampRatio(ratio) * 0.88
+  return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)})`
+}
+
+const getPriceComparisonColor = (price, previousClose) => {
+  const numericPrice = Number(price)
+  const reference = Number(previousClose)
+  if (!Number.isFinite(numericPrice) || !Number.isFinite(reference)) {
+    return PRICE_FLAT_COLOR
+  }
+  if (numericPrice > reference) return PRICE_UP_COLOR
+  if (numericPrice < reference) return PRICE_DOWN_COLOR
+  return PRICE_FLAT_COLOR
+}
+
+function VolumeHeatmapPanel({ entries, referenceLastPrice }) {
+  const latestEntry = entries[entries.length - 1] || null
+  const previousClose = useMemo(() => {
+    if (!latestEntry) return null
+    return resolvePreCloseValue(latestEntry)
+  }, [latestEntry])
+  const rowMetadata = useMemo(() => {
+    if (!latestEntry) return []
+    return HEATMAP_ROWS.map((row) => {
+      const priceValue = resolveRowPrice(latestEntry, row)
+      const volumeValue = resolveRowVolume(latestEntry, row)
+      return {
+        ...row,
+        price: priceValue,
+        volume: volumeValue,
+      }
+    })
+  }, [latestEntry])
+
+  const sortedRows = useMemo(() => {
+    if (!rowMetadata.length) return []
+    const baseOrder = new Map(rowMetadata.map((row) => [row.key, row.order ?? 0]))
+    return rowMetadata.slice().sort((a, b) => {
+      const priceA = Number(a.price)
+      const priceB = Number(b.price)
+      const hasPriceA = Number.isFinite(priceA)
+      const hasPriceB = Number.isFinite(priceB)
+      if (hasPriceA && hasPriceB && priceA !== priceB) {
+        return priceB - priceA
+      }
+      if (hasPriceA && !hasPriceB) return -1
+      if (!hasPriceA && hasPriceB) return 1
+      return (baseOrder.get(a.key) ?? 0) - (baseOrder.get(b.key) ?? 0)
+    })
+  }, [rowMetadata])
+
+  const { normalizedRows, minRatio } = useMemo(() => {
+    if (!sortedRows.length) {
+      return { normalizedRows: [], minRatio: 0 }
+    }
+    const volumes = sortedRows.map((row) => {
+      const numericVolume = Number(row.volume)
+      return Number.isFinite(numericVolume) && numericVolume > 0 ? numericVolume : 0
+    })
+    const sum = volumes.reduce((acc, value) => acc + value, 0)
+    const fallback = sum === 0 ? 1 / sortedRows.length : null
+    let smallestRatio = Infinity
+    const mapped = sortedRows.map((row, index) => {
+      const numericVolume = volumes[index]
+      const ratio = sum > 0 ? numericVolume / sum : fallback ?? 0
+      if (ratio > 0 && ratio < smallestRatio) {
+        smallestRatio = ratio
+      }
+      return {
+        ...row,
+        numericVolume,
+        ratio,
+        volumePercent: ratio * 100,
+      }
+    })
+    return { normalizedRows: mapped, minRatio: Number.isFinite(smallestRatio) ? smallestRatio : 0 }
+  }, [sortedRows])
+
+  const matchingRowIndex = useMemo(() => {
+    if (!Number.isFinite(referenceLastPrice)) return -1
+    return normalizedRows.findIndex((row) => {
+      const numericPrice = Number(row.price)
+      return Number.isFinite(numericPrice) && Math.abs(numericPrice - referenceLastPrice) < 0.0001
+    })
+  }, [referenceLastPrice, normalizedRows])
+
+  const estimatedMinHeight = useMemo(() => {
+    if (!minRatio || minRatio <= 0) return 32
+    const estimate = minRatio * HEATMAP_REFERENCE_HEIGHT
+    return Math.max(24, estimate)
+  }, [minRatio])
+  const baseFontSize = useMemo(() => {
+    const value = (estimatedMinHeight - 16) / 3
+    return Math.max(11, Math.min(18, Math.round(value)))
+  }, [estimatedMinHeight])
+
+  if (!normalizedRows.length) {
+    return (
+      <div className="five-level-empty">
+        <Empty description="暂无可用曲线" image={Empty.PRESENTED_IMAGE_SIMPLE} />
       </div>
-      <div className="orderbook-ratio">
-        <div className="ratio-labels">
-          <span>卖 {formatDepthVolume(totalSellVolume)}</span>
-          <span>买 {formatDepthVolume(totalBuyVolume)}</span>
-        </div>
-        <div className="ratio-bar">
-          <div className="ratio-segment sell" style={{ flexBasis: `${sellRatio * 100}%` }} />
-          <div className="ratio-segment buy" style={{ flexBasis: `${buyRatio * 100}%` }} />
-        </div>
-        <div className="ratio-values">
-          <span style={{ color: '#14b143' }}>{(sellRatio * 100).toFixed(1)}%</span>
-          <span style={{ color: '#ef232a' }}>{(buyRatio * 100).toFixed(1)}%</span>
-        </div>
-      </div>
-      <div className="orderbook-side">
-        <div className="side-title">买盘</div>
-        <div className="orderbook-rows">
-          {buyRows.map(renderRow)}
-        </div>
+    )
+  }
+
+  return (
+    <div className="depth-chart-panel depth-panel-volume volume-heatmap-panel">
+      <div className="depth-chart-header" />
+      <div className="volume-treemap-grid">
+        {normalizedRows.map((row, index) => {
+          const safeRatio = clampRatio(row.ratio || 0)
+          const grow = Math.max(safeRatio, 0.02)
+          const backgroundColor = Number.isFinite(row.numericVolume)
+            ? getHeatmapColor(row.side, safeRatio)
+            : 'rgba(255,255,255,0.06)'
+          const isMatchingRow = matchingRowIndex === index
+          const priceColor = getPriceComparisonColor(row.price, previousClose)
+          const textHighlight = isMatchingRow ? PRICE_MATCH_HIGHLIGHT : undefined
+          return (
+            <div
+              key={row.key}
+              className={`treemap-node ${row.side}${isMatchingRow ? ' matching' : ''}`}
+              style={{
+                flexGrow: grow,
+                flexBasis: 0,
+                backgroundColor,
+              }}
+            >
+              <div className="treemap-node-line">
+                <span
+                  className="node-level"
+                  style={{ fontSize: `${baseFontSize}px`, color: textHighlight }}
+                >
+                  {row.label}
+                </span>
+                <span
+                  className={`node-price${isMatchingRow ? ' current' : ''}`}
+                  style={{ fontSize: `${Math.round(baseFontSize * 1.05)}px`, color: priceColor }}
+                >
+                  {formatPriceValue(row.price)}
+                </span>
+                <span
+                  className="node-volume"
+                  style={{ fontSize: `${baseFontSize}px`, color: textHighlight }}
+                >
+                  {formatDepthVolume(row.numericVolume)}
+                </span>
+                <span
+                  className="node-ratio"
+                  style={{ fontSize: `${Math.max(10, baseFontSize - 1)}px`, color: textHighlight }}
+                >
+                  {`${safeRatio > 0 ? (safeRatio * 100).toFixed(1) : '0.0'}%`}
+                </span>
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
+  )
+}
+
+const buildSeriesSet = (entries, type) => {
+  const isVolume = type === 'volume'
+  const bestSellIndex = SELL_LEVEL_INDEX >= 0 ? SELL_LEVEL_INDEX : SELL_LEVELS.length - 1
+  const bestBuyIndex = BUY_LEVEL_INDEX
+  const buyValues = entries.map((entry) => {
+    if (isVolume) return entry.sellVolumes?.[bestSellIndex] ?? null
+    return entry.sells?.[bestSellIndex] ?? null
+  })
+  const sellValues = entries.map((entry) => {
+    if (isVolume) return entry.buyVolumes?.[bestBuyIndex] ?? null
+    return entry.buys?.[bestBuyIndex] ?? null
+  })
+  const lines = [
+    {
+      key: `buy-${type}`,
+      label: isVolume ? '买一量' : '买一价',
+      side: 'sell',
+      color: isVolume ? SELL_VOLUME_LINE_COLOR : BUY_PRICE_LINE_COLOR,
+      fill: isVolume ? SELL_VOLUME_FILL_COLOR : BUY_PRICE_FILL_COLOR,
+      values: buyValues,
+    },
+    {
+      key: `sell-${type}`,
+      label: isVolume ? '卖一量' : '卖一价',
+      side: 'buy',
+      color: isVolume ? BUY_VOLUME_LINE_COLOR : SELL_PRICE_LINE_COLOR,
+      fill: isVolume ? BUY_VOLUME_FILL_COLOR : SELL_PRICE_FILL_COLOR,
+      values: sellValues,
+    },
+  ]
+  let min = Infinity
+  let max = -Infinity
+  lines.forEach((line) => {
+    line.values.forEach((value) => {
+      if (value === null || value === undefined) return
+      if (value < min) min = value
+      if (value > max) max = value
+    })
+  })
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    min = 0
+    max = 1
+  }
+  if (min === max) {
+    const delta = min === 0 ? 1 : Math.abs(min * 0.02)
+    min -= delta
+    max += delta
+  }
+  return { lines, min, max }
+}
+
+const buildLineCoords = (values, min, max, width, height) => {
+  if (!Array.isArray(values) || !values.length) return []
+  const range = max - min || 1
+  const coords = []
+  values.forEach((value, index) => {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+      coords.push(null)
+      return
+    }
+    const normalized = (value - min) / range
+    const x = Math.min(width, Math.max(0, normalized * width))
+    const orderRatio = values.length > 1 ? (values.length - 1 - index) / (values.length - 1) : 0
+    const y = Math.min(height, Math.max(0, orderRatio * height))
+    coords.push({ x, y })
+  })
+  return coords
+}
+
+const buildPathFromCoords = (coords) => {
+  let path = ''
+  let started = false
+  coords.forEach((point) => {
+    if (!point) {
+      started = false
+      return
+    }
+    const prefix = started ? 'L' : 'M'
+    path += `${prefix}${point.x.toFixed(2)} ${point.y.toFixed(2)}`
+    started = true
+  })
+  return path
+}
+
+const buildAreaPath = (coords, width, side) => {
+  const filtered = coords.filter(Boolean)
+  if (!filtered.length) return ''
+  const parts = [`M${filtered[0].x.toFixed(2)} ${filtered[0].y.toFixed(2)}`]
+  for (let i = 1; i < filtered.length; i += 1) {
+    parts.push(`L${filtered[i].x.toFixed(2)} ${filtered[i].y.toFixed(2)}`)
+  }
+  const last = filtered[filtered.length - 1]
+  const first = filtered[0]
+  if (side === 'sell') {
+    parts.push(`L0 ${last.y.toFixed(2)}`)
+    parts.push(`L0 ${first.y.toFixed(2)}`)
+  } else {
+    parts.push(`L${width.toFixed(2)} ${last.y.toFixed(2)}`)
+    parts.push(`L${width.toFixed(2)} ${first.y.toFixed(2)}`)
+  }
+  parts.push('Z')
+  return parts.join(' ')
+}
+
+function DepthChartPanel({ title, entries, startLabel, endLabel, type, referencePrevClose, referenceLastPrice }) {
+  const { lines, min, max } = useMemo(() => buildSeriesSet(entries, type), [entries, type])
+  const viewWidth = 180
+  const viewHeight = 320
+  const gridLines = 6
+
+  const formatAxisValue = (value) => {
+    if (!Number.isFinite(value)) return '--'
+    if (type === 'volume') {
+      return formatDepthVolume(value)
+    }
+    return Number(value).toFixed(2)
+  }
+
+  const axisTicks = useMemo(() => {
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return []
+    const steps = 4
+    return Array.from({ length: steps + 1 }).map((_, index) => {
+      const ratio = steps === 0 ? 0 : index / steps
+      const value = min + (max - min) * ratio
+      return {
+        key: `axis-${index}`,
+        position: ratio,
+        label: type === 'price' ? formatAxisValue(value) : '',
+      }
+    })
+  }, [min, max, type])
+
+  const lineShapes = useMemo(() => {
+    return lines.map((line) => {
+      const coords = buildLineCoords(line.values, min, max, viewWidth, viewHeight)
+      return {
+        ...line,
+        coords,
+        path: buildPathFromCoords(coords),
+        area: line.fill ? buildAreaPath(coords, viewWidth, line.side) : null,
+      }
+    })
+  }, [lines, min, max, viewWidth, viewHeight])
+
+  return (
+    <div className={`depth-chart-panel ${type === 'price' ? 'depth-panel-price' : 'depth-panel-volume'}`}>
+      {title ? (
+        <div className="depth-chart-header">
+          <span>{title}</span>
+        </div>
+      ) : null}
+      <div className="depth-axis-top">
+        <div className="axis-base-line" />
+        {axisTicks.map((tick) => (
+          <span
+            key={tick.key}
+            className="axis-tick"
+            style={{ left: `${tick.position * 100}%` }}
+          >
+            <span className="tick-line" />
+            {tick.label && <span className="tick-label">{tick.label}</span>}
+          </span>
+        ))}
+      </div>
+      <div className="depth-chart-surface">
+        <svg viewBox={`0 0 ${viewWidth} ${viewHeight}`} preserveAspectRatio="none">
+          {Array.from({ length: gridLines + 1 }).map((_, index) => {
+            const y = (index / gridLines) * viewHeight
+            return (
+              <line
+                key={`grid-${index}`}
+                x1="0"
+                y1={y}
+                x2={viewWidth}
+                y2={y}
+                stroke="rgba(255,255,255,0.08)"
+                strokeWidth="1"
+              />
+            )
+          })}
+          {lineShapes.map((shape) => (
+            <g key={shape.key}>
+              {shape.path && (
+                <path
+                  d={shape.path}
+                  fill="none"
+                  stroke={shape.color}
+                  strokeWidth={type === 'price' ? 1.6 : 2}
+                  strokeLinecap="round"
+                  opacity={shape.side === 'sell' ? 0.98 : 1}
+                />
+              )}
+            </g>
+          ))}
+          {type === 'price' && Number.isFinite(referencePrevClose) && min < max && renderReferenceLine(referencePrevClose, viewWidth, viewHeight, min, max, 'reference-line prev')}
+          {type === 'price' && Number.isFinite(referenceLastPrice) && min < max && renderReferenceLine(referenceLastPrice, viewWidth, viewHeight, min, max, 'reference-line last')}
+        </svg>
+      </div>
+    </div>
+  )
+}
+
+const renderReferenceLine = (value, width, height, min, max, className) => {
+  if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max) || max === min) {
+    return null
+  }
+  const ratio = (value - min) / (max - min)
+  const x = Math.min(width, Math.max(0, ratio * width))
+  return (
+    <line
+      className={className}
+      x1={x}
+      x2={x}
+      y1={0}
+      y2={height}
+      strokeDasharray="4 4"
+    />
   )
 }
